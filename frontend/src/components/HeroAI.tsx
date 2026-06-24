@@ -2,6 +2,8 @@
 import { motion } from 'framer-motion';
 import { InteractiveOrb } from './InteractiveOrb';
 
+import Link from 'next/link';
+
 export function HeroAI() {
   const handleGetStarted = () => {
     const ctaSection = document.getElementById('cta');
@@ -30,7 +32,14 @@ export function HeroAI() {
           Experience a truly reactive, intelligent ecosystem.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-6">
+        <div className="flex flex-col sm:flex-row gap-6 items-center">
+          <Link href="/campus-gpt-demo">
+            <button
+              className="px-10 py-5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 border border-blue-400/50 text-white font-bold text-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_50px_rgba(0,112,243,0.5)] hover:shadow-[0_0_80px_rgba(0,229,255,0.6)] cursor-pointer"
+            >
+              TRY NOW
+            </button>
+          </Link>
           <button
             onClick={handleGetStarted}
             className="px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white font-semibold text-lg hover:bg-white/20 hover:scale-105 active:scale-95 transition-all backdrop-blur-md cursor-pointer"
