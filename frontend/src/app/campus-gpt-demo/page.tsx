@@ -6,6 +6,7 @@ import {
   Paperclip, Mic, Send, Bot, User 
 } from 'lucide-react';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
 
 type Message = {
   id: string;
@@ -22,7 +23,9 @@ type ChatSession = {
 import { LoginModal } from '@/components/campus-gpt/LoginModal';
 
 export default function CampusGPTDemo() {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const isDarkMode = mounted ? resolvedTheme === 'dark' : true;
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -39,6 +42,7 @@ export default function CampusGPTDemo() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setMounted(true);
     // Check local storage for token on mount
     const savedToken = localStorage.getItem('token');
     if (savedToken) setToken(savedToken);
@@ -106,11 +110,7 @@ export default function CampusGPTDemo() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    // Check Guest Limit
-    if (!token && guestMessageCount >= 4) {
-      setShowLoginModal(true);
-      return;
-    }
+    // Guest limit removed as requested
 
     const userMsg = input.trim();
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: userMsg };
@@ -149,7 +149,7 @@ export default function CampusGPTDemo() {
       const res = await fetch('http://localhost:5000/api/chat', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ message: userMsg, chatId: activeChatId, mode: 'STUDENT' })
+        body: JSON.stringify({ message: userMsg, chatId: activeChatId, mode: 'STUDENT', history: messages })
       });
       
       const data = await res.json();
@@ -226,7 +226,7 @@ export default function CampusGPTDemo() {
               <button className={`flex items-center gap-3 w-full p-2 rounded-md text-sm transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
                 <Settings size={16} /> Settings
               </button>
-              <button onClick={() => setIsDarkMode(!isDarkMode)} className={`flex items-center gap-3 w-full p-2 rounded-md text-sm transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+              <button onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')} className={`flex items-center gap-3 w-full p-2 rounded-md text-sm transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
                 {isDarkMode ? <Sun size={16} /> : <Moon size={16} />} 
                 {isDarkMode ? "Light Mode" : "Dark Mode"}
               </button>

@@ -47,7 +47,7 @@ export function AIVisualizationSection() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, margin: "-100px" }}
-          className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight drop-shadow-2xl"
+          className="text-5xl md:text-7xl font-bold text-foreground mb-6 tracking-tight drop-shadow-2xl"
         >
           Intelligence at the Core.
         </motion.h2>
@@ -56,7 +56,7 @@ export function AIVisualizationSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, margin: "-100px" }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-electric font-light max-w-2xl mx-auto backdrop-blur-md bg-black/20 p-6 rounded-2xl border border-white/10"
+          className="text-xl text-electric font-bold max-w-2xl mx-auto backdrop-blur-md bg-black/20 p-6 rounded-2xl border border-foreground/10"
         >
           Adaptive machine learning models generate curriculum, analyze student paths, and predict institutional trends in real-time.
         </motion.p>

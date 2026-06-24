@@ -20,7 +20,7 @@ export function HeroSection() {
             }
           }}
         >
-          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 text-white drop-shadow-2xl">
+          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 text-foreground drop-shadow-2xl">
             One Platform.<br />
             <span className="text-gradient">Infinite Learning.</span>
           </h1>
@@ -30,7 +30,7 @@ export function HeroSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, margin: "-100px" }}
           transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-          className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto font-light"
+          className="text-xl md:text-2xl text-foreground/60 max-w-2xl mx-auto font-bold"
         >
           Empowering Students, Teachers, and Administrators through an immersive, AI-driven educational ecosystem.
         </motion.p>
