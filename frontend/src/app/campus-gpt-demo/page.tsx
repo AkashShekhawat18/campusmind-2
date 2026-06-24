@@ -42,7 +42,45 @@ export default function CampusGPTDemo() {
     // Check local storage for token on mount
     const savedToken = localStorage.getItem('token');
     if (savedToken) setToken(savedToken);
+
+    const savedChats = localStorage.getItem('campusGptChats');
+    if (savedChats) setChats(JSON.parse(savedChats));
+
+    const savedChatId = localStorage.getItem('campusGptCurrentChatId');
+    if (savedChatId) setCurrentChatId(savedChatId);
+
+    const savedCount = localStorage.getItem('campusGptGuestCount');
+    if (savedCount) setGuestMessageCount(parseInt(savedCount, 10));
   }, []);
+
+  // Set messages based on loaded currentChatId
+  useEffect(() => {
+    if (currentChatId && chats.length > 0) {
+      const chat = chats.find(c => c.id === currentChatId);
+      if (chat) {
+        setMessages(chat.messages);
+      }
+    }
+  }, [currentChatId]); // Only run when currentChatId changes, otherwise setting messages causes infinite loops if not careful
+
+  // Save states to local storage
+  useEffect(() => {
+    if (chats.length > 0) {
+      localStorage.setItem('campusGptChats', JSON.stringify(chats));
+    }
+  }, [chats]);
+
+  useEffect(() => {
+    if (currentChatId) {
+      localStorage.setItem('campusGptCurrentChatId', currentChatId);
+    } else {
+      localStorage.removeItem('campusGptCurrentChatId');
+    }
+  }, [currentChatId]);
+
+  useEffect(() => {
+    localStorage.setItem('campusGptGuestCount', guestMessageCount.toString());
+  }, [guestMessageCount]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -77,9 +115,8 @@ export default function CampusGPTDemo() {
     const userMsg = input.trim();
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: userMsg };
     
-    let activeChatId = currentChatId;
-    if (!activeChatId) {
-      activeChatId = Date.now().toString();
+    const activeChatId = currentChatId || Date.now().toString();
+    if (!currentChatId) {
       setCurrentChatId(activeChatId);
       setChats(prev => [{ id: activeChatId, title: userMsg.slice(0, 25) + (userMsg.length > 25 ? '...' : ''), messages: [newUserMsg] }, ...prev]);
     } else {
