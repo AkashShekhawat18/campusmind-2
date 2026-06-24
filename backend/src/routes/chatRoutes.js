@@ -1,10 +1,11 @@
 const express = require('express');
 const { handleChat, getChats } = require('../controllers/chatController');
 const { protect } = require('../middleware/auth');
+const { optionalAuth } = require('../middleware/optionalAuth');
 
 const router = express.Router();
 
-router.post('/', protect, handleChat);
+router.post('/', optionalAuth, handleChat);
 router.get('/history', protect, getChats);
 
 module.exports = router;

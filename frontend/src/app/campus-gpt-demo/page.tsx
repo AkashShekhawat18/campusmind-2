@@ -42,7 +42,45 @@ export default function CampusGPTDemo() {
     // Check local storage for token on mount
     const savedToken = localStorage.getItem('token');
     if (savedToken) setToken(savedToken);
+
+    const savedChats = localStorage.getItem('campusGptChats');
+    if (savedChats) setChats(JSON.parse(savedChats));
+
+    const savedChatId = localStorage.getItem('campusGptCurrentChatId');
+    if (savedChatId) setCurrentChatId(savedChatId);
+
+    const savedCount = localStorage.getItem('campusGptGuestCount');
+    if (savedCount) setGuestMessageCount(parseInt(savedCount, 10));
   }, []);
+
+  // Set messages based on loaded currentChatId
+  useEffect(() => {
+    if (currentChatId && chats.length > 0) {
+      const chat = chats.find(c => c.id === currentChatId);
+      if (chat) {
+        setMessages(chat.messages);
+      }
+    }
+  }, [currentChatId]); // Only run when currentChatId changes, otherwise setting messages causes infinite loops if not careful
+
+  // Save states to local storage
+  useEffect(() => {
+    if (chats.length > 0) {
+      localStorage.setItem('campusGptChats', JSON.stringify(chats));
+    }
+  }, [chats]);
+
+  useEffect(() => {
+    if (currentChatId) {
+      localStorage.setItem('campusGptCurrentChatId', currentChatId);
+    } else {
+      localStorage.removeItem('campusGptCurrentChatId');
+    }
+  }, [currentChatId]);
+
+  useEffect(() => {
+    localStorage.setItem('campusGptGuestCount', guestMessageCount.toString());
+  }, [guestMessageCount]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -77,9 +115,8 @@ export default function CampusGPTDemo() {
     const userMsg = input.trim();
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: userMsg };
     
-    let activeChatId = currentChatId;
-    if (!activeChatId) {
-      activeChatId = Date.now().toString();
+    const activeChatId = currentChatId || Date.now().toString();
+    if (!currentChatId) {
       setCurrentChatId(activeChatId);
       setChats(prev => [{ id: activeChatId, title: userMsg.slice(0, 25) + (userMsg.length > 25 ? '...' : ''), messages: [newUserMsg] }, ...prev]);
     } else {
@@ -101,46 +138,27 @@ export default function CampusGPTDemo() {
       // Wait, the backend /api/chat is protected! We need to bypass or allow guests on backend.
       // Or we can mock the 4 questions strictly on frontend as requested, since guest has no JWT.
       
-      let responseContent = "";
-
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
       if (token) {
-        const res = await fetch('http://localhost:5000/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ message: userMsg, chatId: activeChatId, mode: 'STUDENT' })
-        });
-        
-        const data = await res.json();
-        responseContent = data.reply || data.error || "Error connecting to AI backend.";
-      } else {
-        // Fallback demo response for the 4 guest questions since they can't access protected route.
-        // Wait, the user specifically asked: "Only replace the demo responses with a real backend-powered AI system. Guest users can ask only 4 questions... After 4 messages, a Login Required modal must appear."
-        // Let's call the backend even for guests, but wait, backend /api/chat uses `protect` middleware which blocks no-token requests!
-        // To be precise to the requirements: "Return {loginRequired: true} from backend".
-        // Let's assume the backend will handle the 4 message limit if we remove `protect` and identify guests by IP.
-        // But the user's plan accepted `protect` middleware. I will mock the 4 responses via backend by letting guests call it? No, if backend requires token, fetch fails. 
-        // Let's just use the frontend mockup for the 4 limits, then show modal.
-        
-        responseContent = "Backend AI integration active. (Guest Mode)";
-        const lower = userMsg.toLowerCase();
-        if (lower.includes("dbms")) {
-          responseContent = "DBMS (Database Management System) is software used to store, organize, retrieve, and manage data efficiently.";
-        } else if (lower.includes("os") || lower.includes("operating system")) {
-          responseContent = "An Operating System manages hardware resources and provides services for software applications.";
-        } else if (lower.includes("python")) {
-          responseContent = "Python is a high-level programming language known for readability and rapid development.";
-        }
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
-      setTimeout(() => {
-        const newAsstMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent };
-        setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, newAsstMsg] } : c));
-        setMessages(prev => [...prev, newAsstMsg]);
-        setIsTyping(false);
-      }, 500);
+      const res = await fetch('http://localhost:5000/api/chat', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message: userMsg, chatId: activeChatId, mode: 'STUDENT' })
+      });
+      
+      const data = await res.json();
+      let responseContent = data.reply || data.error || "Error connecting to AI backend.";
+
+      const newAsstMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent };
+      setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, newAsstMsg] } : c));
+      setMessages(prev => [...prev, newAsstMsg]);
+      setIsTyping(false);
 
     } catch (error) {
       setIsTyping(false);
