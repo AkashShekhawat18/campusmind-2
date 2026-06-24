@@ -6,9 +6,9 @@ import Link from 'next/link';
 
 export function HeroAI() {
   const handleGetStarted = () => {
-    const ctaSection = document.getElementById('cta');
-    if (ctaSection) {
-      ctaSection.scrollIntoView({ behavior: 'smooth' });
+    const portalsSection = document.getElementById('portals');
+    if (portalsSection) {
+      portalsSection.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
