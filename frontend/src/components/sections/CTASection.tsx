@@ -18,14 +18,14 @@ export function CTASection() {
           Begin the Evolution.
         </h2>
         
-        <div className="flex flex-col sm:flex-row gap-6 justify-center mt-12">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
           <Link href="/student/login">
-            <button className="px-8 py-4 rounded-full bg-white text-black font-semibold text-lg hover:bg-gray-200 transition-colors shadow-[0_0_40px_rgba(255,255,255,0.2)] cursor-pointer">
+            <button className="px-8 py-4 rounded-full bg-white text-black font-semibold text-lg hover:bg-gray-200 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] cursor-pointer">
               Student Access
             </button>
           </Link>
           <Link href="/teacher/login">
-            <button className="px-8 py-4 rounded-full bg-transparent border border-white/20 text-white font-semibold text-lg hover:bg-white/5 transition-colors backdrop-blur-md cursor-pointer">
+            <button className="px-8 py-4 rounded-full bg-transparent border border-white/20 text-white font-semibold text-lg hover:bg-white/5 hover:scale-105 active:scale-95 transition-all backdrop-blur-md cursor-pointer">
               Teacher Access
             </button>
           </Link>

@@ -37,13 +37,13 @@ export function HeroAI() {
         <div className="flex flex-col sm:flex-row gap-6">
           <button
             onClick={() => setIsVoiceOpen(true)}
-            className="px-8 py-4 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-md text-white font-semibold text-lg hover:bg-blue-500/30 transition-colors shadow-[0_0_40px_rgba(37,99,235,0.3)] cursor-pointer"
+            className="px-8 py-4 rounded-full bg-blue-500/20 border border-blue-500/30 backdrop-blur-md text-white font-semibold text-lg hover:bg-blue-500/30 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(37,99,235,0.3)] cursor-pointer"
           >
             TRY NOW
           </button>
           <button
             onClick={handleGetStarted}
-            className="px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white font-semibold text-lg hover:bg-white/20 transition-colors backdrop-blur-md cursor-pointer"
+            className="px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white font-semibold text-lg hover:bg-white/20 hover:scale-105 active:scale-95 transition-all backdrop-blur-md cursor-pointer"
           >
             GET STARTED
           </button>
