@@ -18,7 +18,7 @@ function AIBlob() {
   return (
     <Float speed={2} rotationIntensity={1} floatIntensity={2}>
       <mesh ref={meshRef}>
-        <icosahedronGeometry args={[2, 20]} />
+        <icosahedronGeometry args={[2, 10]} />
         <MeshDistortMaterial 
           color="#0070F3" 
           emissive="#0070F3"
@@ -36,7 +36,7 @@ export function AIVisualizationSection() {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 py-24 z-20 overflow-hidden">
       <div className="absolute inset-0 opacity-50">
-        <Canvas camera={{ position: [0, 0, 5] }}>
+        <Canvas camera={{ position: [0, 0, 5] }} dpr={[1, 1.5]}>
           <ambientLight intensity={0.5} />
           <AIBlob />
         </Canvas>

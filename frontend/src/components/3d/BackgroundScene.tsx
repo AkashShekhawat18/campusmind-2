@@ -13,8 +13,8 @@ function KnowledgeSphere() {
   const [sphereData, setSphereData] = useState<Float32Array | null>(null);
 
   useEffect(() => {
-    const points = new Float32Array(3000 * 3);
-    for (let i = 0; i < 3000; i++) {
+    const points = new Float32Array(1000 * 3);
+    for (let i = 0; i < 1000; i++) {
       const theta = Math.random() * 2 * Math.PI;
       const phi = Math.acos((Math.random() * 2) - 1);
       const r = 3 * Math.cbrt(Math.random());
@@ -85,11 +85,11 @@ function CursorLight() {
 export function BackgroundScene() {
   return (
     <div className="fixed inset-0 z-[-1] pointer-events-none bg-graphite">
-      <Canvas camera={{ position: [0, 0, 6], fov: 60 }}>
+      <Canvas camera={{ position: [0, 0, 6], fov: 60 }} dpr={[1, 1.5]}>
         <ambientLight intensity={0.2} />
         <directionalLight position={[5, 5, 5]} intensity={0.5} color="#a1a1aa" />
         <CursorLight />
-        <Stars radius={100} depth={50} count={4000} factor={3} saturation={0} fade speed={0.5} />
+        <Stars radius={100} depth={50} count={1500} factor={3} saturation={0} fade speed={0.5} />
         <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.5}>
           <KnowledgeSphere />
         </Float>

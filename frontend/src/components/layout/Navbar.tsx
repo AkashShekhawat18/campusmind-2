@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAudioManager } from '@/hooks/useAudioManager';
 import { motion } from 'framer-motion';
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const { playAudio } = useAudioManager();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -45,7 +47,7 @@ export function Navbar() {
         {/* Right CTA */}
         <div className="flex items-center">
           <Link href="/admin/login">
-            <button className="relative overflow-hidden rounded-full px-6 py-2 bg-gradient-to-b from-[#2a2a2c] to-[#1a1a1c] border border-white/10 text-sm font-semibold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),_0_4px_12px_rgba(0,0,0,0.5)] hover:from-[#3a3a3c] hover:to-[#2a2a2c] hover:border-white/20 transition-all cursor-pointer">
+            <button onClick={() => playAudio('adminPortal')} className="relative overflow-hidden rounded-full px-6 py-2 bg-gradient-to-b from-[#2a2a2c] to-[#1a1a1c] border border-white/10 text-sm font-semibold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),_0_4px_12px_rgba(0,0,0,0.5)] hover:from-[#3a3a3c] hover:to-[#2a2a2c] hover:border-white/20 transition-all cursor-pointer">
               Admin Portal
             </button>
           </Link>
