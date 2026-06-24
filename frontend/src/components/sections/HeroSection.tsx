@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 pt-32 pb-20">
+    <section className="relative flex flex-col items-center justify-center px-6 py-20">
       <div className="text-center max-w-5xl mx-auto z-10 pointer-events-none">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95, y: 20 }}

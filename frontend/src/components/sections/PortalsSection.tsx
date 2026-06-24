@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export function PortalsSection() {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 py-24 z-20">
+    <section className="relative flex flex-col items-center justify-center px-6 py-20 z-20">
       <motion.div 
         initial={{ opacity: 0, y: 100 }}
         whileInView={{ opacity: 1, y: 0 }}

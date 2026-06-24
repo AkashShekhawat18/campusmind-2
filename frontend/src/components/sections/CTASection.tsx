@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export function CTASection() {
   return (
-    <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-6 py-24 z-20">
+    <section id="cta" className="relative min-h-[80vh] flex flex-col items-center justify-center px-6 py-24 z-20">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.03)_0%,_transparent_70%)] pointer-events-none"></div>
       
       <motion.div

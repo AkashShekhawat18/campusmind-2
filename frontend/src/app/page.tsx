@@ -3,14 +3,14 @@
 import { useScroll, useSpring, motion } from 'framer-motion';
 import { BackgroundScene } from '@/components/3d/BackgroundScene';
 import { Navbar } from '@/components/layout/Navbar';
+import { HeroAI } from '@/components/HeroAI';
 import { HeroSection } from '@/components/sections/HeroSection';
+import { FeaturesSection } from '@/components/sections/FeaturesSection';
 import { PortalsSection } from '@/components/sections/PortalsSection';
 import { UIShowcaseSection } from '@/components/sections/UIShowcaseSection';
-import { AIVisualizationSection } from '@/components/sections/AIVisualizationSection';
 import { JourneySection } from '@/components/sections/JourneySection';
 import { AdminShowcaseSection } from '@/components/sections/AdminShowcaseSection';
 import { ArchitectureSection } from '@/components/sections/ArchitectureSection';
-import { FeaturesSection } from '@/components/sections/FeaturesSection';
 import { CTASection } from '@/components/sections/CTASection';
 import { Footer } from '@/components/layout/Footer';
 
@@ -35,14 +35,14 @@ export default function Home() {
       />
 
       {/* Cinematic Scroll Sections */}
-      <HeroSection />
+      <HeroAI />
       <PortalsSection />
+      <HeroSection />
       <UIShowcaseSection />
-      <AIVisualizationSection />
+      <FeaturesSection />
       <JourneySection />
       <AdminShowcaseSection />
       <ArchitectureSection />
-      <FeaturesSection />
       <CTASection />
       
       {/* Footer */}
