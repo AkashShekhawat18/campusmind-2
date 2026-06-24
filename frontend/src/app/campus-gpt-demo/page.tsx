@@ -101,46 +101,27 @@ export default function CampusGPTDemo() {
       // Wait, the backend /api/chat is protected! We need to bypass or allow guests on backend.
       // Or we can mock the 4 questions strictly on frontend as requested, since guest has no JWT.
       
-      let responseContent = "";
-
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
       if (token) {
-        const res = await fetch('http://localhost:5000/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ message: userMsg, chatId: activeChatId, mode: 'STUDENT' })
-        });
-        
-        const data = await res.json();
-        responseContent = data.reply || data.error || "Error connecting to AI backend.";
-      } else {
-        // Fallback demo response for the 4 guest questions since they can't access protected route.
-        // Wait, the user specifically asked: "Only replace the demo responses with a real backend-powered AI system. Guest users can ask only 4 questions... After 4 messages, a Login Required modal must appear."
-        // Let's call the backend even for guests, but wait, backend /api/chat uses `protect` middleware which blocks no-token requests!
-        // To be precise to the requirements: "Return {loginRequired: true} from backend".
-        // Let's assume the backend will handle the 4 message limit if we remove `protect` and identify guests by IP.
-        // But the user's plan accepted `protect` middleware. I will mock the 4 responses via backend by letting guests call it? No, if backend requires token, fetch fails. 
-        // Let's just use the frontend mockup for the 4 limits, then show modal.
-        
-        responseContent = "Backend AI integration active. (Guest Mode)";
-        const lower = userMsg.toLowerCase();
-        if (lower.includes("dbms")) {
-          responseContent = "DBMS (Database Management System) is software used to store, organize, retrieve, and manage data efficiently.";
-        } else if (lower.includes("os") || lower.includes("operating system")) {
-          responseContent = "An Operating System manages hardware resources and provides services for software applications.";
-        } else if (lower.includes("python")) {
-          responseContent = "Python is a high-level programming language known for readability and rapid development.";
-        }
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
-      setTimeout(() => {
-        const newAsstMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent };
-        setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, newAsstMsg] } : c));
-        setMessages(prev => [...prev, newAsstMsg]);
-        setIsTyping(false);
-      }, 500);
+      const res = await fetch('http://localhost:5000/api/chat', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message: userMsg, chatId: activeChatId, mode: 'STUDENT' })
+      });
+      
+      const data = await res.json();
+      let responseContent = data.reply || data.error || "Error connecting to AI backend.";
+
+      const newAsstMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent };
+      setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, newAsstMsg] } : c));
+      setMessages(prev => [...prev, newAsstMsg]);
+      setIsTyping(false);
 
     } catch (error) {
       setIsTyping(false);

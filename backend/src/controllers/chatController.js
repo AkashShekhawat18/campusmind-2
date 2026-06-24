@@ -8,9 +8,14 @@ const handleChat = async (req, res) => {
     return res.status(400).json({ error: 'Message is required' });
   }
 
-  const userId = req.user.id; // From auth middleware
-
   try {
+    // If guest mode (no token or invalid token)
+    if (!req.user) {
+      const aiResponse = await generateResponse(message, mode);
+      return res.json({ reply: aiResponse });
+    }
+
+    const userId = req.user.id;
     let currentChatId = chatId;
     
     // Create new chat if not provided
