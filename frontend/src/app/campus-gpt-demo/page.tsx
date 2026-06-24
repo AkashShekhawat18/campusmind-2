@@ -21,15 +21,8 @@ export default function CampusGPTDemo() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock chat topics
-  const recentChats = [
-    "Database Management System",
-    "Operating System",
-    "Computer Networks",
-    "Python Programming",
-    "Java OOP",
-    "AI & ML"
-  ];
+  // No fake data in recent chats as requested
+  const recentChats: string[] = [];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
