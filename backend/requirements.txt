@@ -1,0 +1,34 @@
+# =============================================================================
+# CampusMind Python Backend — Dependencies
+# =============================================================================
+
+# --- Web Framework ---
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+python-multipart==0.0.20
+
+# --- Validation & Settings ---
+pydantic==2.11.4
+pydantic-settings==2.9.1
+
+# --- Authentication ---
+python-jose[cryptography]==3.4.0
+google-auth==2.40.3
+requests==2.32.4
+
+# --- LLM Integration ---
+google-genai==1.16.1
+
+# --- Task Queue ---
+celery[redis]==5.5.2
+
+# --- ML / Embeddings ---
+sentence-transformers==4.1.0
+
+# --- Document Processing ---
+pytesseract==0.3.13
+PyMuPDF==1.25.5
+
+# --- Logging ---
+python-json-logger==3.3.0
+groq>=1.5.0

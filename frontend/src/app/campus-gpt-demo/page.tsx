@@ -146,7 +146,7 @@ export default function CampusGPTDemo() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('http://localhost:5000/api/chat', {
+      const res = await fetch('http://localhost:8000/api/chat', {
         method: 'POST',
         headers,
         body: JSON.stringify({ message: userMsg, chatId: activeChatId, mode: 'STUDENT', history: messages })

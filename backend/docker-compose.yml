@@ -1,0 +1,83 @@
+# =============================================================================
+# CampusMind Python Backend — Docker Compose
+# Services: FastAPI web server, Celery worker, Redis broker
+# =============================================================================
+#
+# Usage:
+#   docker compose up --build           # Start all services
+#   docker compose up --build -d        # Start in background
+#   docker compose logs -f web          # Follow web server logs
+#   docker compose logs -f worker       # Follow worker logs
+#   docker compose down                 # Stop all services
+# =============================================================================
+
+services:
+  # -------------------------------------------------------------------------
+  # Redis — Message broker & result backend for Celery
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Web — FastAPI server (uvicorn)
+  # -------------------------------------------------------------------------
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - upload_data:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Worker — Celery worker for ML/OCR tasks
+  # -------------------------------------------------------------------------
+  worker:
+    build: .
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=2
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - upload_data:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ---------------------------------------------------------------------------
+# Persistent Volumes
+# ---------------------------------------------------------------------------
+volumes:
+  redis_data:
+    driver: local
+  upload_data:
+    driver: local
