@@ -4,8 +4,9 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars, Float, PointMaterial, Points } from '@react-three/drei';
 import * as THREE from 'three';
+import { useTheme } from 'next-themes';
 
-function KnowledgeSphere() {
+function KnowledgeSphere({ isLightMode }: { isLightMode: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const { mouse } = useThree();
@@ -51,23 +52,23 @@ function KnowledgeSphere() {
       <mesh ref={meshRef}>
         <icosahedronGeometry args={[2.5, 3]} />
         <meshStandardMaterial 
-          color="#3a3a3c" 
+          color={isLightMode ? "#0070F3" : "#3a3a3c"} 
           wireframe 
           transparent 
-          opacity={0.3} 
+          opacity={isLightMode ? 0.4 : 0.3} 
         />
       </mesh>
       
       {sphereData && (
         <Points ref={pointsRef} positions={sphereData} stride={3} frustumCulled={false}>
-          <PointMaterial transparent color="#ffffff" size={0.015} sizeAttenuation={true} depthWrite={false} opacity={0.4} />
+          <PointMaterial transparent color={isLightMode ? "#1a1a1c" : "#ffffff"} size={isLightMode ? 0.02 : 0.015} sizeAttenuation={true} depthWrite={false} opacity={isLightMode ? 0.7 : 0.4} />
         </Points>
       )}
     </group>
   );
 }
 
-function CursorLight() {
+function CursorLight({ isLightMode }: { isLightMode: boolean }) {
   const lightRef = useRef<THREE.PointLight>(null);
   const { mouse, viewport } = useThree();
 
@@ -79,22 +80,27 @@ function CursorLight() {
     }
   });
 
-  return <pointLight ref={lightRef} intensity={3} color="#ffffff" distance={15} />;
+  return <pointLight ref={lightRef} intensity={isLightMode ? 4 : 3} color={isLightMode ? "#0070F3" : "#ffffff"} distance={isLightMode ? 20 : 15} />;
 }
 
 export function BackgroundScene() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isLightMode = mounted && resolvedTheme === 'light';
+
   return (
-    <div className="fixed inset-0 z-[-1] pointer-events-none bg-graphite">
+    <div className="fixed inset-0 z-[-1] pointer-events-none bg-background">
       <Canvas camera={{ position: [0, 0, 6], fov: 60 }}>
-        <ambientLight intensity={0.2} />
-        <directionalLight position={[5, 5, 5]} intensity={0.5} color="#a1a1aa" />
-        <CursorLight />
-        <Stars radius={100} depth={50} count={4000} factor={3} saturation={0} fade speed={0.5} />
+        <ambientLight intensity={isLightMode ? 0.8 : 0.2} />
+        <directionalLight position={[5, 5, 5]} intensity={isLightMode ? 1 : 0.5} color={isLightMode ? "#ffffff" : "#a1a1aa"} />
+        <CursorLight isLightMode={isLightMode} />
+        {!isLightMode && <Stars radius={100} depth={50} count={4000} factor={3} saturation={0} fade speed={0.5} />}
         <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.5}>
-          <KnowledgeSphere />
+          <KnowledgeSphere isLightMode={isLightMode} />
         </Float>
       </Canvas>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_#0a0a0c_80%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_var(--background)_80%)]" />
     </div>
   );
 }

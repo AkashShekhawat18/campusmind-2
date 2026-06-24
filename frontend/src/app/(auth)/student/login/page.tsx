@@ -11,18 +11,18 @@ export default function StudentLogin() {
         <div className="w-12 h-12 rounded-xl bg-electric-blue/20 flex items-center justify-center mb-4">
           <GraduationCap className="w-6 h-6 text-neon-cyan" />
         </div>
-        <h2 className="text-2xl font-bold text-white">Student Login</h2>
-        <p className="text-gray-400 text-sm mt-2 text-center">Enter your credentials to access the portal</p>
+        <h2 className="text-2xl font-bold text-foreground">Student Login</h2>
+        <p className="text-foreground/60 text-sm mt-2 text-center">Enter your credentials to access the portal</p>
       </div>
 
       <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
-          <input type="email" className="w-full bg-deep-space/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon-cyan transition-colors" placeholder="student@campusmind.edu" />
+          <label className="block text-sm font-medium text-foreground/70 mb-1">Email</label>
+          <input type="email" className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors" placeholder="student@campusmind.edu" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
-          <input type="password" className="w-full bg-deep-space/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon-cyan transition-colors" placeholder="••••••••" />
+          <label className="block text-sm font-medium text-foreground/70 mb-1">Password</label>
+          <input type="password" className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors" placeholder="••••••••" />
         </div>
         
         <div className="flex justify-end">
@@ -34,12 +34,12 @@ export default function StudentLogin() {
         </button>
       </form>
 
-      <div className="mt-6 text-center text-sm text-gray-400">
+      <div className="mt-6 text-center text-sm text-foreground/60">
         Account approval required from Administrator before activation.
       </div>
       
-      <div className="mt-6 pt-6 border-t border-white/10 text-center">
-        <p className="text-gray-400 text-sm">
+      <div className="mt-6 pt-6 border-t border-foreground/10 text-center">
+        <p className="text-foreground/60 text-sm">
           Don&apos;t have an account? <Link href="/student/register" className="text-neon-cyan hover:underline font-medium">Register here</Link>
         </p>
       </div>

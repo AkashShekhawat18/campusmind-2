@@ -19,20 +19,20 @@ export function PortalsSection() {
             <div className="w-16 h-16 rounded-2xl bg-electric/10 flex items-center justify-center mb-8 border border-electric/20 backdrop-blur-md shadow-2xl">
               <GraduationCap className="w-8 h-8 text-electric" />
             </div>
-            <h2 className="text-3xl font-bold mb-4 text-white tracking-tight">Student Portal</h2>
-            <p className="text-gray-400 mb-8 flex-1 text-lg font-light leading-relaxed">
+            <h2 className="text-3xl font-bold mb-4 text-foreground tracking-tight">Student Portal</h2>
+            <p className="text-foreground/60 mb-8 flex-1 text-lg font-bold leading-relaxed">
               Access your AI Learning Assistant, track assignments, and view smart analytics for your academic journey.
             </p>
             <div className="grid grid-cols-2 gap-4 mb-10">
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+              <div className="flex items-center gap-2 text-sm text-foreground/70 font-medium">
                 <Zap className="w-4 h-4 text-electric" /> AI Assistant
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+              <div className="flex items-center gap-2 text-sm text-foreground/70 font-medium">
                 <LineChart className="w-4 h-4 text-electric" /> Smart Analytics
               </div>
             </div>
             <Link href="/student/login" className="w-full block">
-              <button className="w-full py-4 rounded-xl bg-white text-black font-semibold text-lg hover:bg-gray-200 transition-colors shadow-[0_4px_24px_rgba(255,255,255,0.15)] cursor-pointer">
+              <button className="w-full py-4 rounded-xl bg-foreground text-background font-semibold text-lg hover:opacity-90 transition-opacity shadow-xl shadow-foreground/10 cursor-pointer">
                 Enter Student Portal
               </button>
             </Link>
@@ -44,20 +44,20 @@ export function PortalsSection() {
             <div className="w-16 h-16 rounded-2xl bg-silver/10 flex items-center justify-center mb-8 border border-silver/20 backdrop-blur-md shadow-2xl">
               <User className="w-8 h-8 text-silver" />
             </div>
-            <h2 className="text-3xl font-bold mb-4 text-white tracking-tight">Teacher Portal</h2>
-            <p className="text-gray-400 mb-8 flex-1 text-lg font-light leading-relaxed">
+            <h2 className="text-3xl font-bold mb-4 text-foreground tracking-tight">Teacher Portal</h2>
+            <p className="text-foreground/60 mb-8 flex-1 text-lg font-bold leading-relaxed">
               Generate questions with AI, analyze student performance, and manage your content seamlessly in a unified workspace.
             </p>
             <div className="grid grid-cols-2 gap-4 mb-10">
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+              <div className="flex items-center gap-2 text-sm text-foreground/70 font-medium">
                 <Database className="w-4 h-4 text-silver" /> Content Gen
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
+              <div className="flex items-center gap-2 text-sm text-foreground/70 font-medium">
                 <ShieldCheck className="w-4 h-4 text-silver" /> Performance
               </div>
             </div>
             <Link href="/teacher/login" className="w-full block">
-              <button className="w-full py-4 rounded-xl bg-transparent border border-white/20 text-white font-semibold text-lg hover:bg-white/5 transition-colors backdrop-blur-md cursor-pointer">
+              <button className="w-full py-4 rounded-xl bg-transparent border border-foreground/20 text-foreground font-semibold text-lg hover:bg-foreground/5 transition-colors backdrop-blur-md cursor-pointer">
                 Enter Teacher Portal
               </button>
             </Link>

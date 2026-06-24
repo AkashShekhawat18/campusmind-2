@@ -5,6 +5,8 @@ import { CursorGlow } from "@/components/ui/CursorGlow";
 import { GridOverlay } from "@/components/ui/GridOverlay";
 import { FloatingParticles } from "@/components/ui/FloatingParticles";
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -26,14 +28,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-graphite text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <CursorGlow />
-        <GridOverlay />
-        <FloatingParticles />
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <CursorGlow />
+          <GridOverlay />
+          <FloatingParticles />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

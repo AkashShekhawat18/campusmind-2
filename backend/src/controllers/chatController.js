@@ -1,8 +1,8 @@
 const prisma = require('../utils/prisma');
-const { generateResponse } = require('../services/gemini.service');
+const { generateResponse } = require('../services/ai.service');
 
 const handleChat = async (req, res) => {
-  const { message, chatId, mode } = req.body;
+  const { message, chatId, mode, history } = req.body;
   
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
@@ -11,7 +11,7 @@ const handleChat = async (req, res) => {
   try {
     // If guest mode (no token or invalid token)
     if (!req.user) {
-      const aiResponse = await generateResponse(message, mode);
+      const aiResponse = await generateResponse(message, mode, history);
       return res.json({ reply: aiResponse });
     }
 
@@ -39,7 +39,7 @@ const handleChat = async (req, res) => {
     });
 
     // Get Gemini response
-    const aiResponse = await generateResponse(message, mode);
+    const aiResponse = await generateResponse(message, mode, history);
 
     // Save AI message
     await prisma.message.create({

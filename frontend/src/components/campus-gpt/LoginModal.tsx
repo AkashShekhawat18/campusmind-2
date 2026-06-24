@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, History, Mic, FileText, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -73,16 +74,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, isDarkM
             </div>
 
             <div className="flex flex-col gap-3">
-              <button className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                Login
-              </button>
-              <button className={`w-full py-3.5 rounded-xl font-semibold border transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                isDarkMode 
-                  ? 'border-white/20 hover:bg-white/5 text-white' 
-                  : 'border-black/20 hover:bg-black/5 text-black'
-              }`}>
-                Sign Up
-              </button>
+              <Link href="/student/login" className="w-full">
+                <button className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                  Continue as Student
+                </button>
+              </Link>
+              <Link href="/teacher/login" className="w-full">
+                <button className={`w-full py-3.5 rounded-xl font-semibold border transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                  isDarkMode 
+                    ? 'border-white/20 hover:bg-white/5 text-white' 
+                    : 'border-black/20 hover:bg-black/5 text-black'
+                }`}>
+                  Continue as Teacher
+                </button>
+              </Link>
             </div>
           </motion.div>
         </div>

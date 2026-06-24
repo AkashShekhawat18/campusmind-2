@@ -14,18 +14,18 @@ export function CTASection() {
         transition={{ duration: 1 }}
         className="text-center max-w-4xl mx-auto relative z-10"
       >
-        <h2 className="text-5xl md:text-7xl font-bold text-white mb-8 tracking-tighter drop-shadow-2xl">
+        <h2 className="text-5xl md:text-7xl font-bold text-foreground mb-8 tracking-tighter drop-shadow-2xl">
           Begin the Evolution.
         </h2>
         
         <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
           <Link href="/student/login">
-            <button className="px-8 py-4 rounded-full bg-white text-black font-semibold text-lg hover:bg-gray-200 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] cursor-pointer">
+            <button className="px-8 py-4 rounded-full bg-foreground text-background font-semibold text-lg hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-foreground/20 cursor-pointer">
               Student Access
             </button>
           </Link>
           <Link href="/teacher/login">
-            <button className="px-8 py-4 rounded-full bg-transparent border border-white/20 text-white font-semibold text-lg hover:bg-white/5 hover:scale-105 active:scale-95 transition-all backdrop-blur-md cursor-pointer">
+            <button className="px-8 py-4 rounded-full bg-transparent border border-foreground/20 text-foreground font-semibold text-lg hover:bg-foreground/5 hover:scale-105 active:scale-95 transition-all backdrop-blur-md cursor-pointer">
               Teacher Access
             </button>
           </Link>
