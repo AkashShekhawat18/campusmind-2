@@ -13,16 +13,24 @@ type Message = {
   content: string;
 };
 
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
 export default function CampusGPTDemo() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Chat History State
+  const [chats, setChats] = useState<ChatSession[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
-  // No fake data in recent chats as requested
-  const recentChats: string[] = [];
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,12 +40,34 @@ export default function CampusGPTDemo() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  const handleNewChat = () => {
+    setCurrentChatId(null);
+    setMessages([]);
+  };
+
+  const handleSelectChat = (chatId: string) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (chat) {
+      setCurrentChatId(chat.id);
+      setMessages(chat.messages);
+    }
+  };
+
   const handleSend = () => {
     if (!input.trim()) return;
 
     const userMsg = input.trim();
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: userMsg };
     
+    let activeChatId = currentChatId;
+    if (!activeChatId) {
+      activeChatId = Date.now().toString();
+      setCurrentChatId(activeChatId);
+      setChats(prev => [{ id: activeChatId, title: userMsg.slice(0, 25) + (userMsg.length > 25 ? '...' : ''), messages: [newUserMsg] }, ...prev]);
+    } else {
+      setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, newUserMsg] } : c));
+    }
+
     setMessages(prev => [...prev, newUserMsg]);
     setInput('');
     setIsTyping(true);
@@ -55,7 +85,10 @@ export default function CampusGPTDemo() {
         responseContent = "Python is a high-level programming language known for readability and rapid development.";
       }
 
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent }]);
+      const newAsstMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent };
+      
+      setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, newAsstMsg] } : c));
+      setMessages(prev => [...prev, newAsstMsg]);
       setIsTyping(false);
     }, 1500);
   };
@@ -86,17 +119,25 @@ export default function CampusGPTDemo() {
               </button>
             </div>
 
-            <button className={`flex items-center gap-2 w-full p-3 rounded-lg border transition-colors ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-black/10 hover:bg-black/5'}`}>
+            <button onClick={handleNewChat} className={`flex items-center gap-2 w-full p-3 rounded-lg border transition-colors ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-black/10 hover:bg-black/5'}`}>
               <span className="text-xl">+</span>
               <span className="font-medium text-sm">New Chat</span>
             </button>
 
             <div className="mt-6 flex-1 overflow-y-auto overflow-x-hidden space-y-2 pr-2">
               <div className="px-2 text-xs font-semibold opacity-50 mb-3">Recent Chats</div>
-              {recentChats.map((chat, idx) => (
-                <button key={idx} className={`w-full text-left truncate text-sm p-2 rounded-md transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} opacity-80 hover:opacity-100`}>
+              {chats.map((chat) => (
+                <button 
+                  key={chat.id} 
+                  onClick={() => handleSelectChat(chat.id)}
+                  className={`w-full text-left truncate text-sm p-2 rounded-md transition-colors ${
+                    currentChatId === chat.id 
+                      ? (isDarkMode ? 'bg-white/10' : 'bg-black/10') 
+                      : (isDarkMode ? 'hover:bg-white/5' : 'hover:bg-black/5')
+                  } opacity-80 hover:opacity-100`}
+                >
                   <MessageSquare size={14} className="inline mr-2 opacity-60" />
-                  {chat}
+                  {chat.title}
                 </button>
               ))}
             </div>
