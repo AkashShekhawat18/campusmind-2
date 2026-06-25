@@ -8,13 +8,16 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("STUDENT") // STUDENT, TEACHER
-  createdAt DateTime @default(now())
-  chats     Chat[]
+  id             String          @id @default(uuid())
+  name           String
+  email          String          @unique
+  password       String
+  role           String          @default("STUDENT") // STUDENT, TEACHER, ADMIN
+  createdAt      DateTime        @default(now())
+  chats          Chat[]
+  questionPapers QuestionPaper[]
+  resources      Resource[]
+  auditLogs      AuditLog[]
 }
 
 model Chat {
@@ -33,4 +36,90 @@ model Message {
   content   String
   createdAt DateTime @default(now())
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model Subject {
+  id             String          @id @default(uuid())
+  name           String
+  department     String
+  semester       Int
+  createdAt      DateTime        @default(now())
+  questionPapers QuestionPaper[]
+  resources      Resource[]
+
+  @@unique([name, department, semester])
+}
+
+model QuestionPaper {
+  id                 String              @id @default(uuid())
+  title              String
+  year               Int
+  semester           Int
+  filePath           String
+  originalFileName   String
+  extractedText      String?
+  isProcessed        Boolean             @default(false)
+  subjectId          String?
+  uploadedById       String
+  createdAt          DateTime            @default(now())
+  subject            Subject?            @relation(fields: [subjectId], references: [id])
+  uploadedBy         User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  extractedQuestions ExtractedQuestion[]
+}
+
+model ExtractedQuestion {
+  id                    String             @id @default(uuid())
+  questionText          String
+  questionNumber        String?
+  marks                 Int?
+  topic                 String?
+  questionPaperId       String
+  createdAt             DateTime           @default(now())
+  questionPaper         QuestionPaper      @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+  similarityAsSource    SimilarityResult[] @relation("SourceQuestion")
+  similarityAsMatch     SimilarityResult[] @relation("MatchedQuestion")
+}
+
+model SimilarityResult {
+  id                  String            @id @default(uuid())
+  sourceQuestionId    String
+  matchedQuestionId   String
+  similarityScore     Float
+  matchType           String            // "EXACT" or "SEMANTIC"
+  matchedYear         Int?
+  matchedPaperTitle   String?
+  matchedSubject      String?
+  matchedSemester     Int?
+  createdAt           DateTime          @default(now())
+  sourceQuestion      ExtractedQuestion @relation("SourceQuestion", fields: [sourceQuestionId], references: [id], onDelete: Cascade)
+  matchedQuestion     ExtractedQuestion @relation("MatchedQuestion", fields: [matchedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model Resource {
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
+  fileType         String   // "PDF", "DOCX", "PPT", "IMAGE", "NOTES"
+  filePath         String
+  originalFileName String
+  fileSize         Int
+  department       String
+  semester         Int
+  subjectName      String
+  subjectId        String?
+  uploadedById     String
+  createdAt        DateTime @default(now())
+  subject          Subject? @relation(fields: [subjectId], references: [id])
+  uploadedBy       User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // "UPLOAD_PYQ", "DELETE_RESOURCE", "LOGIN", etc.
+  entityType String?  // "QuestionPaper", "Resource", etc.
+  entityId   String?
+  details    String?
+  userId     String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
