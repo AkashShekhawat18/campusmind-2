@@ -411,6 +411,39 @@ const deleteChat = async (req, res) => {
   }
 };
 
+// ─── Save Streamed Chat ────────────────────────────────────────────
+const saveStreamedChat = async (req, res) => {
+  try {
+    const { chatId, title, messages } = req.body;
+    const userId = req.user.id;
+    let currentChatId = chatId;
+
+    if (!currentChatId || currentChatId.startsWith('chat_')) {
+      const newChat = await prisma.chat.create({
+        data: { userId, title: title || 'New Chat' }
+      });
+      currentChatId = newChat.id;
+    }
+
+    // Insert only the new messages (usually the last 2: user and assistant)
+    for (const msg of messages) {
+      await prisma.message.create({
+        data: {
+          chatId: currentChatId,
+          role: msg.role,
+          content: msg.content,
+          fileReferences: msg.files ? JSON.stringify(msg.files) : null
+        }
+      });
+    }
+
+    res.json({ chatId: currentChatId });
+  } catch (error) {
+    console.error('Save streamed chat error:', error);
+    res.status(500).json({ error: 'Failed to save chat' });
+  }
+};
+
 module.exports = {
   getDashboard,
   uploadQuestionPaper,
@@ -423,6 +456,7 @@ module.exports = {
   deleteResource,
   listSubjects,
   teacherChat,
+  saveStreamedChat,
   getTeacherChats,
   renameChat,
   deleteChat

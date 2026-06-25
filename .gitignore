@@ -1,2 +1,6 @@
 node_modules/ 
 backend/uploads/ 
+  
+ai-service/venv/  
+ai-service/__pycache__/  
+ai-service/chroma_db/ 

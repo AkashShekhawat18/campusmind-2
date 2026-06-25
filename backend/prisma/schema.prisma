@@ -30,12 +30,13 @@ model Chat {
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  chatId    String
-  role      String   // "user" or "assistant"
-  content   String
-  createdAt DateTime @default(now())
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  chatId         String
+  role           String   // "user" or "assistant"
+  content        String
+  fileReferences String?  // JSON string storing metadata about uploaded files for this turn
+  createdAt      DateTime @default(now())
+  chat           Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 
 model Subject {

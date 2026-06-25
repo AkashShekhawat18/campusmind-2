@@ -26,6 +26,20 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Proxy for Python AI Microservice (must be before body parsers for streaming/multipart)
+const { createProxyMiddleware } = require('http-proxy-middleware');
+app.use('/api/ai', createProxyMiddleware({
+  target: 'http://127.0.0.1:8000',
+  changeOrigin: true,
+  pathRewrite: function (path, req) {
+    return req.originalUrl;
+  },
+  // Ensure SSE streams correctly
+  onProxyRes: function (proxyRes, req, res) {
+    proxyRes.headers['Cache-Control'] = 'no-cache';
+  }
+}));
+
 // Parse JSON bodies
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));

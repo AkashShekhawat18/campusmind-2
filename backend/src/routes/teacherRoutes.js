@@ -44,6 +44,7 @@ router.delete('/resources/:id', deleteResource);
 
 // Chat Routes (teacher-specific Campus GPT)
 router.post('/chat', teacherChat);
+router.post('/chat/save', require('../controllers/teacherController').saveStreamedChat);
 router.get('/chat/history', getTeacherChats);
 router.put('/chat/:id', renameChat);
 router.delete('/chat/:id', deleteChat);
