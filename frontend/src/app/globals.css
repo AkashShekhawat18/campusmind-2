@@ -19,7 +19,7 @@
   --scroll-thumb-hover: #3a3a3c;
 }
 
-:root.light, .light {
+html.light, .light {
   --background: #f0f0f5; 
   --foreground: #1a1a1c;
   --graphite: #ffffff;
@@ -50,6 +50,13 @@
   --color-silver: var(--silver);
   --color-electric: #0070F3;
   --color-cyan-glow: rgba(0, 229, 255, 0.6);
+
+  /* Accent Colors */
+  --color-neon-cyan: #00E5FF;
+  --color-electric-violet: #8A2BE2;
+  --color-soft-gold: #FFD700;
+  --color-electric-blue: #0070F3;
+  --color-deep-space: #0a0a0c;
 }
 
 html {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 
 // =============================================================================
 // **TODO: DROP YOUR AUDIO FILES IN THE `public/audio/` DIRECTORY**
@@ -22,9 +22,8 @@ const AUDIO_PATHS: Record<string, string | string[]> = {
   tryNow: [
     '/audio/try-now.mp3',
     '/audio/try-2.mp3',
-    // '/audio/try-3.mp3',
   ],
-  getStarted:  '/audio/get-started.mp3',   // **TODO: Replace with your actual GET STARTED audio file**
+  getStarted: '/audio/get-started.mp3',   // **TODO: Replace with your actual GET STARTED audio file**
   adminPortal: '/audio/admin-portal.mp3',  // **TODO: Replace with your actual ADMIN PORTAL audio file**
 };
 
@@ -43,8 +42,10 @@ export type AudioKey = keyof typeof AUDIO_PATHS;
  *   const { playAudio } = useAudioManager();
  *   <button onClick={() => playAudio('tryNow')}>TRY NOW</button>
  */
+// Global audio instance so playback isn't interrupted by Next.js page navigations
+let globalAudio: HTMLAudioElement | null = null;
+
 export function useAudioManager() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const playAudio = useCallback((key: AudioKey) => {
     const pathOrPaths = AUDIO_PATHS[key];
@@ -67,17 +68,17 @@ export function useAudioManager() {
     }
 
     // Stop any currently playing audio to prevent overlap
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    if (globalAudio) {
+      globalAudio.pause();
+      globalAudio.currentTime = 0;
     }
 
     // Create a fresh Audio instance (avoids stale src issues)
     const audio = new Audio(filePath);
-    audioRef.current = audio;
+    globalAudio = audio;
 
     // Attempt playback with graceful fallback for missing files
-    audio.play().catch(() => {
+    return audio.play().catch(() => {
       // **Graceful Fallback**: File is missing or failed to load — no crash, just a warning
       console.warn(`🔇 Audio file pending: "${filePath}" — Place your audio file in public/audio/`);
     });

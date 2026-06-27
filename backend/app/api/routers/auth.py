@@ -9,8 +9,10 @@ Endpoints:
 import logging
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
+from app.core.database import get_db
 from app.models.auth import GoogleAuthRequest, TokenResponse, UserResponse
 from app.services.auth_service import authenticate_google_user
 
@@ -20,7 +22,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/google", response_model=TokenResponse)
-async def google_login(request: GoogleAuthRequest):
+async def google_login(request: GoogleAuthRequest, db: Session = Depends(get_db)):
     """
     Authenticate with Google OAuth.
 
@@ -28,7 +30,7 @@ async def google_login(request: GoogleAuthRequest):
     validates it, creates/finds the user, and returns a JWT for API access.
     """
     logger.info("Google login attempt")
-    result = authenticate_google_user(request.credential)
+    result = authenticate_google_user(request.credential, db)
     logger.info("Google login success | email=%s", result.user.email)
     return result
 

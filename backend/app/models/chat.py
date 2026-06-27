@@ -11,8 +11,11 @@ from pydantic import BaseModel, Field
 class ChatRequest(BaseModel):
     """Request body to send a chat message."""
     message: str = Field(..., description="User's message text", min_length=1, max_length=10000)
-    chat_id: Optional[str] = Field(None, description="Existing chat session ID (null for new chat)")
+    chat_id: Optional[str] = Field(None, alias="chatId", description="Existing chat session ID (null for new chat)")
     mode: str = Field("STUDENT", description="AI mode: STUDENT or TEACHER")
+    history: Optional[list[dict]] = Field(None, description="Chat history")
+
+    model_config = {"populate_by_name": True}
 
 
 class ChatResponse(BaseModel):

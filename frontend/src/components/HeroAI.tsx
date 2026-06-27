@@ -3,16 +3,22 @@ import { motion } from 'framer-motion';
 import { InteractiveOrb } from './InteractiveOrb';
 import { useAudioManager } from '@/hooks/useAudioManager';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export function HeroAI() {
   const { playAudio } = useAudioManager();
+  const router = useRouter();
 
   const handleGetStarted = () => {
     const portalsSection = document.getElementById('portals');
     if (portalsSection) {
       portalsSection.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleTryNow = async () => {
+    await playAudio('tryNow');
+    router.push('/campus-gpt-demo');
   };
 
   return (
@@ -36,14 +42,12 @@ export function HeroAI() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-6 items-center">
-          <Link href="/campus-gpt-demo">
-            <button
-              onClick={() => playAudio('tryNow')}
-              className="px-10 py-5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 border border-blue-400/50 text-white font-bold text-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_50px_rgba(0,112,243,0.5)] hover:shadow-[0_0_80px_rgba(0,229,255,0.6)] cursor-pointer"
-            >
-              TRY NOW
-            </button>
-          </Link>
+          <button
+            onClick={handleTryNow}
+            className="px-10 py-5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 border border-blue-400/50 text-white font-bold text-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_50px_rgba(0,112,243,0.5)] hover:shadow-[0_0_80px_rgba(0,229,255,0.6)] cursor-pointer"
+          >
+            TRY NOW
+          </button>
           <button
             onClick={() => { playAudio('getStarted'); handleGetStarted(); }}
             className="px-8 py-4 rounded-full bg-foreground/10 border border-foreground/20 text-foreground font-semibold text-lg hover:bg-foreground/20 hover:scale-105 active:scale-95 transition-all backdrop-blur-md cursor-pointer"

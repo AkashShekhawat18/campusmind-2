@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { GraduationCap } from 'lucide-react';
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
 
 export default function StudentLogin() {
   return (
@@ -32,6 +33,14 @@ export default function StudentLogin() {
         <button type="submit" className="w-full py-3 rounded-lg bg-neon-cyan text-black font-semibold hover:bg-neon-cyan/90 transition-colors mt-6 shadow-[0_0_15px_rgba(0,229,255,0.4)] cursor-pointer">
           Sign In
         </button>
+
+        <div className="relative flex py-5 items-center">
+          <div className="flex-grow border-t border-foreground/10"></div>
+          <span className="flex-shrink-0 mx-4 text-foreground/50 text-sm">Or continue with</span>
+          <div className="flex-grow border-t border-foreground/10"></div>
+        </div>
+
+        <GoogleLoginButton />
       </form>
 
       <div className="mt-6 text-center text-sm text-foreground/60">

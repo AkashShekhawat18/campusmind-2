@@ -6,15 +6,15 @@ and issues a JWT for subsequent API access.
 """
 
 import logging
-
+from sqlalchemy.orm import Session
 from app.core.security import create_access_token, verify_google_token
 from app.models.auth import TokenResponse, UserResponse
-from app.repositories.user_repository import user_repository
+from app.repositories.user_repository import SQLAlchemyUserRepository
 
 logger = logging.getLogger(__name__)
 
 
-def authenticate_google_user(credential: str) -> TokenResponse:
+def authenticate_google_user(credential: str, db: Session) -> TokenResponse:
     """
     Full Google OAuth authentication flow:
     1. Validate the Google ID token
@@ -23,6 +23,7 @@ def authenticate_google_user(credential: str) -> TokenResponse:
 
     Args:
         credential: Raw Google ID token from the frontend.
+        db: SQLAlchemy database session.
 
     Returns:
         TokenResponse with JWT and user profile.
@@ -31,9 +32,10 @@ def authenticate_google_user(credential: str) -> TokenResponse:
     google_info = verify_google_token(credential)
 
     # Step 2: Upsert user in repository
+    user_repository = SQLAlchemyUserRepository(db)
     user = user_repository.find_or_create(
         email=google_info["email"],
-        name=google_info["name"],
+        name=google_info.get("name", ""),
         picture=google_info.get("picture", ""),
         google_sub=google_info["sub"],
     )

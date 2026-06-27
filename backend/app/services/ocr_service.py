@@ -86,12 +86,13 @@ def extract_text_from_pdf(file_path: str) -> str:
                 if ocr_text:
                     all_text.append(ocr_text)
 
+        page_count = doc.page_count
         doc.close()
 
         combined = "\n\n".join(all_text)
         logger.info(
             "PDF complete | path=%s | pages=%d | chars=%d",
-            file_path, doc.page_count, len(combined),
+            file_path, page_count, len(combined),
         )
         return combined
 
@@ -111,7 +112,7 @@ def _ocr_pdf_page(page) -> Optional[str]:
         import io
 
         # Render page at 300 DPI for better OCR accuracy
-        mat = page.get_pixmap(matrix=page.derotation_matrix, dpi=300)  # type: ignore[attr-defined]
+        # Render page at 300 DPI for better OCR accuracy
         # Actually use fitz.Matrix for DPI
         import fitz
         zoom = 300 / 72  # 300 DPI / default 72 DPI

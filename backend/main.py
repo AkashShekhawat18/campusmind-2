@@ -34,10 +34,16 @@ logger = logging.getLogger("campusmind")
 # Application Lifespan
 # ---------------------------------------------------------------------------
 
+from app.core.database import engine, Base
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle events."""
     settings = get_settings()
+    
+    # Initialize the database tables
+    Base.metadata.create_all(bind=engine)
+    
     logger.info("=" * 60)
     logger.info("CampusMind Backend starting")
     logger.info("Environment: %s", settings.ENVIRONMENT)

@@ -18,10 +18,12 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
+from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.auth import UserResponse
-from app.repositories.user_repository import user_repository
+from app.repositories.user_repository import SQLAlchemyUserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,7 @@ optional_security_scheme = HTTPBearer(auto_error=False)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    db: Session = Depends(get_db),
 ) -> UserResponse:
     """
     FastAPI dependency that extracts and validates the JWT from the
@@ -50,6 +53,7 @@ async def get_current_user(
             detail="Invalid token: missing user ID",
         )
 
+    user_repository = SQLAlchemyUserRepository(db)
     user = user_repository.get_by_id(user_id)
     if not user:
         raise HTTPException(
@@ -69,6 +73,7 @@ async def get_current_user(
 
 async def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security_scheme),
+    db: Session = Depends(get_db),
 ) -> Optional[UserResponse]:
     """
     Same as get_current_user, but returns None instead of raising
@@ -79,6 +84,6 @@ async def get_optional_user(
         return None
 
     try:
-        return await get_current_user(credentials)
+        return await get_current_user(credentials, db)
     except HTTPException:
         return None

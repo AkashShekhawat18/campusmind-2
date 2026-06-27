@@ -1,35 +1,32 @@
 """
-User Repository — In-memory implementation.
-
-Stores users in a dict for development. Swap this with a PostgreSQL
-implementation when ready (same interface, different storage).
+User Repository — SQLAlchemy implementation.
 """
 
 import logging
-import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
-
-from app.repositories.base import AbstractRepository
+from typing import Optional
+from sqlalchemy.orm import Session
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 
-class InMemoryUserRepository(AbstractRepository):
-    """In-memory user store backed by a Python dict."""
+class SQLAlchemyUserRepository:
+    """SQLAlchemy user store backed by the database."""
 
-    def __init__(self) -> None:
-        self._store: dict[str, dict] = {}
-        self._email_index: dict[str, str] = {}  # email -> user_id for fast lookup
+    def __init__(self, db: Session):
+        self.db = db
 
     def get_by_id(self, entity_id: str) -> Optional[dict]:
-        return self._store.get(entity_id)
+        user = self.db.query(User).filter(User.id == entity_id).first()
+        if user:
+            return self._to_dict(user)
+        return None
 
     def find_by_email(self, email: str) -> Optional[dict]:
         """Find a user by email address."""
-        user_id = self._email_index.get(email)
-        if user_id:
-            return self._store.get(user_id)
+        user = self.db.query(User).filter(User.email == email).first()
+        if user:
+            return self._to_dict(user)
         return None
 
     def find_or_create(
@@ -48,52 +45,27 @@ class InMemoryUserRepository(AbstractRepository):
             logger.info("User found | email=%s | id=%s", email, existing["id"])
             return existing
 
-        user_data = {
-            "email": email,
-            "name": name,
-            "picture": picture,
-            "google_sub": google_sub,
-            "role": "STUDENT",
+        user = User(
+            email=email,
+            name=name,
+            picture=picture,
+            google_sub=google_sub,
+            role="STUDENT"
+        )
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+        
+        logger.info("User created | email=%s | id=%s", user.email, user.id)
+        return self._to_dict(user)
+
+    def _to_dict(self, user: User) -> dict:
+        return {
+            "id": user.id,
+            "email": user.email,
+            "google_sub": user.google_sub,
+            "name": user.name,
+            "picture": user.picture,
+            "role": user.role,
+            "created_at": user.created_at,
         }
-        return self.create(user_data)
-
-    def create(self, data: dict) -> dict:
-        user_id = str(uuid.uuid4())
-        user = {
-            "id": user_id,
-            "name": data.get("name", ""),
-            "email": data["email"],
-            "role": data.get("role", "STUDENT"),
-            "picture": data.get("picture", ""),
-            "google_sub": data.get("google_sub", ""),
-            "created_at": datetime.now(timezone.utc),
-        }
-        self._store[user_id] = user
-        self._email_index[user["email"]] = user_id
-        logger.info("User created | email=%s | id=%s", user["email"], user_id)
-        return user
-
-    def update(self, entity_id: str, data: dict) -> Optional[dict]:
-        if entity_id not in self._store:
-            return None
-        self._store[entity_id].update(data)
-        return self._store[entity_id]
-
-    def delete(self, entity_id: str) -> bool:
-        user = self._store.pop(entity_id, None)
-        if user:
-            self._email_index.pop(user["email"], None)
-            return True
-        return False
-
-    def list_all(self, **filters: Any) -> list[dict]:
-        results = list(self._store.values())
-        for key, value in filters.items():
-            results = [u for u in results if u.get(key) == value]
-        return results
-
-
-# ---------------------------------------------------------------------------
-# Singleton instance — import this in services/dependencies
-# ---------------------------------------------------------------------------
-user_repository = InMemoryUserRepository()
