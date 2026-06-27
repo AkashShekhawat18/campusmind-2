@@ -1,6 +1,7 @@
 'use client';
 import { motion } from 'framer-motion';
-import { InteractiveOrb } from './InteractiveOrb';
+import dynamic from 'next/dynamic';
+const InteractiveOrb = dynamic(() => import('./InteractiveOrb').then(mod => mod.InteractiveOrb), { ssr: false });
 
 import Link from 'next/link';
 

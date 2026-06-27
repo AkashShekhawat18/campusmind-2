@@ -42,54 +42,52 @@ const getDashboard = async (req, res) => {
   }
 };
 
-// ─── PYQ Upload ──────────────────────────────────────────────────
-const uploadQuestionPaper = async (req, res) => {
+// ─── Bulk Upload PYQ (Historical) ──────────────────────────────────────────────────
+const bulkUploadPYQ = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const { title, year, semester, subjectId } = req.body;
-
-    if (!title || !year || !semester) {
-      return res.status(400).json({ error: 'Title, year, and semester are required' });
-    }
+    if (!title || !year || !semester) return res.status(400).json({ error: 'Title, year, and semester are required' });
 
     const paper = await prisma.questionPaper.create({
       data: {
-        title,
-        year: parseInt(year),
-        semester: parseInt(semester),
-        filePath: req.file.path,
-        originalFileName: req.file.originalname,
-        subjectId: subjectId || null,
-        uploadedById: req.user.id
+        title, year: parseInt(year), semester: parseInt(semester),
+        filePath: req.file.path, originalFileName: req.file.originalname,
+        subjectId: subjectId || null, uploadedById: req.user.id,
+        uploadType: 'HISTORICAL'
       }
     });
 
-    // Log the upload
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPLOAD_PYQ',
-        entityType: 'QuestionPaper',
-        entityId: paper.id,
-        details: `Uploaded: ${title}`,
-        userId: req.user.id
-      }
-    });
+    processQuestionPaper(paper.id).catch(err => console.error('Bulk PYQ processing error:', err));
 
-    // Process asynchronously (extract text, separate questions, find similarities)
-    processQuestionPaper(paper.id).catch(err => {
-      console.error('PYQ processing error:', err);
-    });
-
-    res.status(201).json({
-      message: 'Question paper uploaded. Processing will begin shortly.',
-      paper
-    });
+    res.status(201).json({ message: 'Historical paper added to database. Processing started.', paper });
   } catch (error) {
-    console.error('Upload PYQ error:', error);
-    res.status(500).json({ error: 'Failed to upload question paper' });
+    console.error('Bulk Upload PYQ error:', error);
+    res.status(500).json({ error: 'Failed to upload historical question paper' });
+  }
+};
+
+// ─── Analyze Current Paper ──────────────────────────────────────────────────────
+const analyzeCurrentPaper = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const { title, year, semester, subjectId } = req.body;
+    
+    const paper = await prisma.questionPaper.create({
+      data: {
+        title: title || 'Current Analysis', year: parseInt(year) || new Date().getFullYear(), 
+        semester: parseInt(semester) || 1, filePath: req.file.path, 
+        originalFileName: req.file.originalname, subjectId: subjectId || null, 
+        uploadedById: req.user.id, uploadType: 'CURRENT_ANALYSIS'
+      }
+    });
+
+    processQuestionPaper(paper.id).catch(err => console.error('Current PYQ processing error:', err));
+
+    res.status(201).json({ message: 'Current paper uploaded for analysis. Analytics generation started.', paper });
+  } catch (error) {
+    console.error('Analyze Current Paper error:', error);
+    res.status(500).json({ error: 'Failed to upload current question paper' });
   }
 };
 
@@ -101,7 +99,8 @@ const listQuestionPapers = async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         subject: true,
-        _count: { select: { extractedQuestions: true } }
+        _count: { select: { extractedQuestions: true } },
+        analytics: true
       }
     });
 
@@ -146,6 +145,44 @@ const getQuestionPaperDetail = async (req, res) => {
   }
 };
 
+// ─── PYQ Delete ──────────────────────────────────────────────────
+const deleteQuestionPaper = async (req, res) => {
+  try {
+    const paper = await prisma.questionPaper.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!paper) {
+      return res.status(404).json({ error: 'Question paper not found' });
+    }
+
+    if (paper.uploadedById !== req.user.id) {
+      return res.status(403).json({ error: 'You can only delete your own papers' });
+    }
+
+    if (fs.existsSync(paper.filePath)) {
+      fs.unlinkSync(paper.filePath);
+    }
+
+    await prisma.questionPaper.delete({ where: { id: req.params.id } });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'DELETE_PYQ',
+        entityType: 'QuestionPaper',
+        entityId: req.params.id,
+        details: `Deleted PYQ: ${paper.title}`,
+        userId: req.user.id
+      }
+    });
+
+    res.json({ message: 'Question paper deleted successfully' });
+  } catch (error) {
+    console.error('Delete PYQ error:', error);
+    res.status(500).json({ error: 'Failed to delete question paper' });
+  }
+};
+
 // ─── AI Rewrite ──────────────────────────────────────────────────
 const rewriteQuestion = async (req, res) => {
   try {
@@ -164,6 +201,36 @@ const rewriteQuestion = async (req, res) => {
   }
 };
 
+// ─── AI Model Answer ──────────────────────────────────────────────
+const generateAnswer = async (req, res) => {
+  try {
+    const { question, format, questionId } = req.body;
+
+    if (!question) {
+      return res.status(400).json({ error: 'Question text is required' });
+    }
+
+    // Since we generated it from ai-service previously, let's proxy it to python service or local ai.service
+    const { generateModelAnswer } = require('../services/ai.service');
+    const content = await generateModelAnswer(question, format);
+
+    if (questionId) {
+      await prisma.modelAnswer.create({
+        data: {
+          extractedQuestionId: questionId,
+          answerType: format || 'DETAILED',
+          content
+        }
+      });
+    }
+
+    res.json({ answer: content });
+  } catch (error) {
+    console.error('Generate answer error:', error);
+    res.status(500).json({ error: 'Failed to generate model answer' });
+  }
+};
+
 // ─── QP Chatbot ──────────────────────────────────────────────────
 const questionPaperChat = async (req, res) => {
   try {
@@ -175,14 +242,27 @@ const questionPaperChat = async (req, res) => {
 
     const paper = await prisma.questionPaper.findUnique({
       where: { id: paperId },
-      select: { extractedText: true }
+      include: {
+        extractedQuestions: {
+          orderBy: { questionNumber: 'asc' }
+        }
+      }
     });
 
-    if (!paper || !paper.extractedText) {
-      return res.status(404).json({ error: 'Question paper not found or not yet processed' });
+    if (!paper || !paper.extractedQuestions || paper.extractedQuestions.length === 0) {
+      return res.status(404).json({ error: 'Question paper not found or has no extracted questions yet.' });
     }
 
-    const reply = await analyzeQuestionPaper(paper.extractedText, message, history || []);
+    // Format the questions into a clean text block for the AI to understand
+    const paperContext = paper.extractedQuestions.map((q, i) => {
+      let qText = `Question ${q.questionNumber || (i + 1)}: ${q.questionText}`;
+      if (q.marks) qText += ` [${q.marks} Marks]`;
+      if (q.topic) qText += ` (Topic: ${q.topic})`;
+      return qText;
+    }).join('\n\n');
+
+    const { analyzeQuestionPaper } = require('../services/ai.service');
+    const reply = await analyzeQuestionPaper(paperContext, message, history || []);
 
     res.json({ reply });
   } catch (error) {
@@ -444,12 +524,52 @@ const saveStreamedChat = async (req, res) => {
   }
 };
 
+// ─── Analytics & Search ──────────────────────────────────────────────────
+const getAnalytics = async (req, res) => {
+  try {
+    const analytics = await prisma.paperAnalytics.findMany({
+      include: {
+        questionPaper: {
+          select: { title: true, year: true, semester: true }
+        }
+      }
+    });
+    res.json({ status: 'success', analytics });
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ error: 'Failed to load analytics' });
+  }
+};
+
+const searchQuestions = async (req, res) => {
+  try {
+    const { q, subject, year } = req.query;
+    const where = {};
+    if (q) {
+      where.questionText = { contains: q };
+    }
+    
+    const questions = await prisma.extractedQuestion.findMany({
+      where,
+      include: { questionPaper: true },
+      take: 50
+    });
+    res.json({ status: 'success', questions });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Failed to search questions' });
+  }
+};
+
 module.exports = {
   getDashboard,
-  uploadQuestionPaper,
+  bulkUploadPYQ,
+  analyzeCurrentPaper,
   listQuestionPapers,
   getQuestionPaperDetail,
+  deleteQuestionPaper,
   rewriteQuestion,
+  generateAnswer,
   questionPaperChat,
   uploadResource,
   listResources,
@@ -459,5 +579,7 @@ module.exports = {
   saveStreamedChat,
   getTeacherChats,
   renameChat,
-  deleteChat
+  deleteChat,
+  getAnalytics,
+  searchQuestions
 };

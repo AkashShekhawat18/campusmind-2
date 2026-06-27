@@ -25,7 +25,7 @@ export default function Home() {
   return (
     <main className="relative bg-background text-foreground overflow-hidden">
       {/* Global Background Elements */}
-      <BackgroundScene />
+      {/* <BackgroundScene /> */}
       <Navbar />
 
       {/* Global Neural Thread */}

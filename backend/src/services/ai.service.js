@@ -17,11 +17,13 @@ const generateResponse = async (message, mode = 'STUDENT', history = []) => {
     systemPrompt = `You are CampusGPT, a highly intelligent and supportive AI assistant for students.
 Your goal is to help students learn, understand concepts, and debug code.
 Be encouraging, clear, and concise. You can assist with any topic or question the student has.
-Do not restrict yourself to specific subjects.`;
+Do not restrict yourself to specific subjects.
+IMPORTANT: When outputting mathematical equations, formulas, or expressions, YOU MUST use standard LaTeX syntax. Use $ for inline math (e.g. $x^2$) and $$ for display math (e.g. $$x = \\frac{-b}{2a}$$). NEVER use Unicode math symbols or raw text for equations.`;
   } else {
     systemPrompt = `You are CampusGPT, an AI assistant for teachers.
 Help educators with lesson planning, grading rubrics, and answering student queries efficiently.
-You can assist with any topic or question the teacher has.`;
+You can assist with any topic or question the teacher has.
+IMPORTANT: When outputting mathematical equations, formulas, or expressions, YOU MUST use standard LaTeX syntax. Use $ for inline math (e.g. $x^2$) and $$ for display math (e.g. $$x = \\frac{-b}{2a}$$). NEVER use Unicode math symbols or raw text for equations.`;
   }
 
   // Map frontend history to Groq (OpenAI style) format
@@ -109,12 +111,36 @@ CONSTRAINTS:
 - Worth the same marks${marks ? `: ${marks} marks` : ''}
 ${learningOutcome ? `- Learning outcome: ${learningOutcome}` : ''}
 - The rewritten question must NOT be a simple paraphrase — change the scenario, data, or approach
-- Output ONLY the rewritten question, nothing else`;
+- Output ONLY the rewritten question, nothing else
+- VERY IMPORTANT: Use standard LaTeX notation with $ (inline) and $$ (display) for ANY mathematical formulas. Do NOT use raw text or unicode for math.`;
 
   return callGroq([
     { role: 'system', content: systemPrompt },
     { role: 'user', content: `Original question:\n${question}` }
   ], 0.8, 512);
+};
+
+/**
+ * Generate a model answer for a question in a specific format
+ */
+const generateModelAnswer = async (question, format = 'DETAILED') => {
+  let formatInstruction = 'Provide a detailed, comprehensive answer.';
+  if (format === 'SHORT') formatInstruction = 'Provide a concise, short answer.';
+  if (format === 'BULLETED') formatInstruction = 'Provide the answer in a clear bullet-point format.';
+  if (format === 'STEP_BY_STEP') formatInstruction = 'Provide a step-by-step logical explanation.';
+
+  const systemPrompt = `You are an expert academic tutor. Your task is to generate a high-quality model answer for the given exam question.
+
+FORMAT CONSTRAINT:
+- ${formatInstruction}
+
+Output ONLY the answer text, without conversational filler. Use Markdown formatting for readability.
+VERY IMPORTANT: Use standard LaTeX notation with $ (inline) and $$ (display) for ANY mathematical formulas, equations, or logic gates. Do NOT use raw text or unicode for math.`;
+
+  return callGroq([
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: `Question:\n${question}` }
+  ], 0.7, 1024);
 };
 
 /**
@@ -135,6 +161,7 @@ YOUR RESTRICTIONS:
 - You must ONLY answer questions related to the uploaded question paper
 - If the user asks something unrelated to the paper, politely decline and redirect them
 - Always reference specific questions from the paper when relevant
+- VERY IMPORTANT: Use standard LaTeX notation with $ (inline) and $$ (display) for ANY mathematical formulas, matrices, integrals, limits, etc. Do NOT use raw text or unicode for math.
 
 QUESTION PAPER CONTENT:
 ---
@@ -150,7 +177,7 @@ ${paperContext}
     { role: 'system', content: systemPrompt },
     ...formattedHistory,
     { role: 'user', content: userQuestion }
-  ], 0.7, 1024);
+  ], 0.7, 8192);
 };
 
 /**
@@ -218,6 +245,7 @@ Rules:
 module.exports = {
   generateResponse,
   generateQuestionRewrite,
+  generateModelAnswer,
   analyzeQuestionPaper,
   compareQuestions,
   separateQuestions

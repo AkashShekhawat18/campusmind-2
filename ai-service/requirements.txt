@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-dotenv
+groq
+langchain-text-splitters
+PyMuPDF
+Pillow
+openpyxl
+python-docx
+python-pptx
+chromadb
+sentence-transformers
+opencv-python-headless
+numpy
+requests

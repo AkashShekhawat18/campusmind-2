@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "katex/dist/katex.min.css";
 import { CursorGlow } from "@/components/ui/CursorGlow";
 import { GridOverlay } from "@/components/ui/GridOverlay";
 import { FloatingParticles } from "@/components/ui/FloatingParticles";

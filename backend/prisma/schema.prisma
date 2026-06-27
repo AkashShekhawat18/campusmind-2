@@ -16,8 +16,14 @@ model User {
   createdAt      DateTime        @default(now())
   chats          Chat[]
   questionPapers QuestionPaper[]
-  resources      Resource[]
-  auditLogs      AuditLog[]
+  resources          Resource[]
+  auditLogs          AuditLog[]
+  studentProfile     StudentProfile?
+  studentSettings    StudentSettings?
+  bookmarks          Bookmark[]
+  downloadedResources DownloadedResource[]
+  recentResources    RecentResource[]
+  studentActivities  StudentActivity[]
 }
 
 model Chat {
@@ -56,16 +62,22 @@ model QuestionPaper {
   title              String
   year               Int
   semester           Int
+  examType           String?
+  department         String?
+  academicYear       String?
   filePath           String
   originalFileName   String
   extractedText      String?
   isProcessed        Boolean             @default(false)
+  uploadType         String              @default("HISTORICAL") // "HISTORICAL" or "CURRENT_ANALYSIS"
   subjectId          String?
   uploadedById       String
   createdAt          DateTime            @default(now())
   subject            Subject?            @relation(fields: [subjectId], references: [id])
   uploadedBy         User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
   extractedQuestions ExtractedQuestion[]
+  analytics          PaperAnalytics?
+  bookmarks          Bookmark[]
 }
 
 model ExtractedQuestion {
@@ -74,11 +86,46 @@ model ExtractedQuestion {
   questionNumber        String?
   marks                 Int?
   topic                 String?
+  section               String?
+  subParts              String?            // JSON string
+  unit                  String?
+  embedding             String?            // JSON string array of floats
   questionPaperId       String
   createdAt             DateTime           @default(now())
   questionPaper         QuestionPaper      @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
   similarityAsSource    SimilarityResult[] @relation("SourceQuestion")
   similarityAsMatch     SimilarityResult[] @relation("MatchedQuestion")
+  rewrites              QuestionRewrite[]
+  modelAnswers          ModelAnswer[]
+  topics                QuestionTopic[]    @relation("QuestionToTopic")
+  questionImages        QuestionImage[]
+  questionTables        QuestionTable[]
+  questionEquations     QuestionEquation[]
+  questionDiagrams      QuestionDiagram[]
+}
+
+model QuestionRewrite {
+  id                  String             @id @default(uuid())
+  extractedQuestionId String
+  originalText        String
+  rewrittenText       String
+  createdAt           DateTime           @default(now())
+  extractedQuestion   ExtractedQuestion  @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model ModelAnswer {
+  id                  String             @id @default(uuid())
+  extractedQuestionId String
+  answerType          String             // "DETAILED", "SHORT", "BULLETED", "STEP_BY_STEP"
+  content             String
+  createdAt           DateTime           @default(now())
+  extractedQuestion   ExtractedQuestion  @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionTopic {
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  extractedQuestions ExtractedQuestion[] @relation("QuestionToTopic")
 }
 
 model SimilarityResult {
@@ -112,6 +159,9 @@ model Resource {
   createdAt        DateTime @default(now())
   subject          Subject? @relation(fields: [subjectId], references: [id])
   uploadedBy       User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  bookmarks          Bookmark[]
+  downloadedBy       DownloadedResource[]
+  recentViews        RecentResource[]
 }
 
 model AuditLog {
@@ -121,6 +171,114 @@ model AuditLog {
   entityId   String?
   details    String?
   userId     String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QuestionImage {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  imageUrl            String            
+  description         String?
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionTable {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  tableData           String            // JSON string of rows/columns
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionEquation {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  latex               String
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionDiagram {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  diagramUrl          String
+  description         String?
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model PaperAnalytics {
+  id                  String            @id @default(uuid())
+  questionPaperId     String            @unique
+  overallSimilarity   Float
+  repeatedCount       Int
+  uniqueCount         Int
+  totalQuestions      Int
+  topicDistribution   String            // JSON string
+  yearDistribution    String            // JSON string
+  createdAt           DateTime          @default(now())
+  questionPaper       QuestionPaper     @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+}
+
+// ─── Phase 2: Student Portal Models ──────────────────────────────
+
+model StudentProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  department     String?
+  semester       Int?
+  course         String?
+  profilePicture String?
+  bio            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Bookmark {
+  id              String         @id @default(uuid())
+  userId          String
+  resourceId      String?
+  questionPaperId String?
+  createdAt       DateTime       @default(now())
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource        Resource?      @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  questionPaper   QuestionPaper? @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+}
+
+model DownloadedResource {
+  id         String   @id @default(uuid())
+  userId     String
+  resourceId String
+  downloadedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model StudentSettings {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  theme          String   @default("system")
+  notifications  Boolean  @default(true)
+  language       String   @default("en")
+  aiPreferences  String?  // JSON string
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RecentResource {
+  id         String   @id @default(uuid())
+  userId     String
+  resourceId String
+  viewedAt   DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model StudentActivity {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String   // e.g. "VIEW_RESOURCE", "CHAT_STARTED", "DOWNLOADED_PYQ"
+  details    String?
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
