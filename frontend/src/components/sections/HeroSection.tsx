@@ -1,5 +1,6 @@
 'use client';
 import { motion } from 'framer-motion';
+import { SplitText } from '@/components/ui/SplitText';
 
 export function HeroSection() {
   return (
@@ -20,16 +21,16 @@ export function HeroSection() {
             }
           }}
         >
-          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 text-foreground drop-shadow-2xl">
-            One Platform.<br />
-            <span className="text-gradient">Infinite Learning.</span>
+          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 text-foreground drop-shadow-2xl leading-[1.1]">
+            <SplitText text="One Platform." tag="span" />
+            <SplitText text="Infinite Learning." tag="span" className="text-gradient" delay={60} />
           </h1>
         </motion.div>
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, margin: "-100px" }}
-          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
+          transition={{ duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className="text-xl md:text-2xl text-foreground/60 max-w-2xl mx-auto font-bold"
         >
           Empowering Students, Teachers, and Administrators through an immersive, AI-driven educational ecosystem.

@@ -9,6 +9,7 @@ import {
   LayoutDashboard, MessageSquare, FileText, BookOpen,
   Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles
 } from 'lucide-react';
+import { WeatherWidget } from '@/components/widgets/WeatherWidget';
 
 const sidebarItems = [
   { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
@@ -179,6 +180,9 @@ export default function TeacherDashboardLayout({
             }`}>
               {sidebarItems.find(i => pathname.startsWith(i.href))?.label || 'Dashboard'}
             </div>
+          </div>
+          <div className="flex items-center">
+            <WeatherWidget />
           </div>
         </header>
 

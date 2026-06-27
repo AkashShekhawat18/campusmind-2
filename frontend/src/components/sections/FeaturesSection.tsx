@@ -63,7 +63,7 @@ export function FeaturesSection() {
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: false, margin: "-50px" }}
-              transition={{ delay: i * 0.15, type: "spring" }}
+              transition={{ delay: i * 0.15, type: "spring", stiffness: 50, damping: 20 }}
               className="absolute z-10"
               style={{ top: feature.position.top, left: feature.position.left }}
               onMouseEnter={() => setHoveredIndex(i)}
@@ -77,7 +77,7 @@ export function FeaturesSection() {
                   borderRadius: isHovered ? 24 : 40,
                   backgroundColor: isHovered ? "var(--titanium)" : "var(--glass-bg)"
                 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                transition={{ type: "spring", stiffness: 100, damping: 25 }}
                 className="glass-panel overflow-hidden border border-foreground/10 shadow-2xl flex flex-col relative group cursor-crosshair"
               >
                 {/* Background glow on hover */}
