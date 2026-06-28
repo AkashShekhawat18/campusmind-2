@@ -65,7 +65,7 @@ export default function StudentDashboard() {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1] } }
+    visible: { opacity: 1, y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1] as any } }
   };
 
   return (
@@ -78,7 +78,7 @@ export default function StudentDashboard() {
       {/* Welcome */}
       <motion.div variants={itemVariants} className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
-          Welcome back{localStorage.getItem('studentName') ? `, ${localStorage.getItem('studentName').split(' ')[0]}` : ''} 👋
+          Welcome back{typeof window !== 'undefined' && localStorage.getItem('studentName') ? `, ${localStorage.getItem('studentName')?.split(' ')[0]}` : ''} 👋
         </h1>
         <p className={`text-sm ${isDark ? 'text-white/50' : 'text-black/50'}`}>
           Ready to supercharge your study session?

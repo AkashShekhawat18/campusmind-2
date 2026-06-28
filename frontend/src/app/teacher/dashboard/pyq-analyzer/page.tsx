@@ -349,11 +349,11 @@ export default function PYQAnalyzer() {
                                <Sparkles size={12} /> {paper._count?.extractedQuestions || 0} Questions
                              </span>
                           </div>
-                          {paper.analytics && (
+                          {(paper as any).analytics && (
                             <div className="flex flex-col text-right">
                               <span className="text-[10px] uppercase font-bold tracking-wider opacity-50">Repetition</span>
-                              <span className={`text-xs font-semibold flex items-center justify-end gap-1 ${paper.analytics.overallSimilarity > 50 ? 'text-orange-500' : 'text-blue-500'}`}>
-                                <Target size={12} /> {Math.round(paper.analytics.overallSimilarity)}% Match
+                              <span className={`text-xs font-semibold flex items-center justify-end gap-1 ${(paper as any).analytics.overallSimilarity > 50 ? 'text-orange-500' : 'text-blue-500'}`}>
+                                <Target size={12} /> {Math.round((paper as any).analytics.overallSimilarity)}% Match
                               </span>
                             </div>
                           )}

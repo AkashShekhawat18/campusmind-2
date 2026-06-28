@@ -6,7 +6,7 @@ import { useTheme } from 'next-themes';
 import { useDropzone } from 'react-dropzone';
 import {
   BookOpen, ExternalLink, Upload, File, FileText, Image as ImageIcon,
-  Download, Trash2, Search, Filter, Loader2, RefreshCw
+  Download, Trash2, Search, Filter, Loader2, RefreshCw, Bookmark
 } from 'lucide-react';
 import Link from 'next/link';
 

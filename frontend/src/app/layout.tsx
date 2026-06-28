@@ -8,6 +8,7 @@ import { GridOverlay } from "@/components/ui/GridOverlay";
 import { FloatingParticles } from "@/components/ui/FloatingParticles";
 
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { Malphor } from "@/components/malphor/Malphor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({
             <GridOverlay />
             <FloatingParticles />
             {children}
+            <Malphor />
           </SmoothScrollProvider>
         </ThemeProvider>
       </body>

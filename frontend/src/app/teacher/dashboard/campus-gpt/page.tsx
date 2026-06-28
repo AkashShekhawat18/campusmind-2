@@ -294,7 +294,7 @@ export default function TeacherCampusGPT() {
         if (saveRes.ok) {
           const saveData = await saveRes.json();
           // Update the temporary chat_id to the real database UUID if it was a new chat
-          if (activeChatId.startsWith('chat_')) {
+          if (activeChatId && activeChatId.startsWith('chat_')) {
             setCurrentChatId(saveData.chatId);
             setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, id: saveData.chatId } : c));
           }
