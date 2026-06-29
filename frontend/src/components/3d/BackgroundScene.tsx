@@ -90,7 +90,7 @@ export function BackgroundScene() {
   const isLightMode = mounted && resolvedTheme === 'light';
 
   return (
-    <div className="fixed inset-0 z-[-1] pointer-events-none bg-background">
+    <div className="fixed inset-0 z-[-1] pointer-events-none">
       <Canvas camera={{ position: [0, 0, 6], fov: 60 }}>
         <ambientLight intensity={isLightMode ? 0.8 : 0.2} />
         <directionalLight position={[5, 5, 5]} intensity={isLightMode ? 1 : 0.5} color={isLightMode ? "#ffffff" : "#a1a1aa"} />
@@ -100,7 +100,10 @@ export function BackgroundScene() {
           <KnowledgeSphere isLightMode={isLightMode} />
         </Float>
       </Canvas>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_var(--background)_80%)]" />
+      <div 
+        className="absolute inset-0" 
+        style={{ background: 'radial-gradient(ellipse at center, transparent 0%, var(--background) 80%)' }} 
+      />
     </div>
   );
 }

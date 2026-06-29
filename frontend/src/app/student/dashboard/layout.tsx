@@ -52,7 +52,7 @@ export default function StudentDashboardLayout({
   };
 
   return (
-    <div className={`flex h-screen w-full overflow-hidden transition-colors duration-300 ${isDark ? 'bg-[#0a0a0c] text-[#f5f5f7]' : 'bg-[#f0f0f5] text-[#1a1a1c]'}`}>
+    <div className={`flex h-screen w-full overflow-hidden transition-colors duration-300 ${isDark ? 'bg-transparent text-[#f5f5f7]' : 'bg-transparent text-[#1a1a1c]'}`}>
       {/* SIDEBAR */}
       <AnimatePresence>
         {sidebarOpen && (

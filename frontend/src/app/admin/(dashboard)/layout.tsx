@@ -6,20 +6,25 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import {
-  LayoutDashboard, MessageSquare, FileText, BookOpen,
-  Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles
+  LayoutDashboard, Users, MessageSquare, BookOpen,
+  Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles, Building, Database, Activity, CheckCircle
 } from 'lucide-react';
 import { WeatherWidget } from '@/components/widgets/WeatherWidget';
 
 const sidebarItems = [
-  { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
-  { label: 'Campus GPT', href: '/teacher/dashboard/campus-gpt', icon: MessageSquare },
-  { label: 'PYQ Analyzer', href: '/teacher/dashboard/pyq-analyzer', icon: FileText },
-  { label: 'BITS Pilani Resources', href: '/teacher/dashboard/resources', icon: BookOpen },
-  { label: 'Settings', href: '/teacher/dashboard/settings', icon: Settings },
+  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'Approval Center', href: '/admin/approvals', icon: CheckCircle },
+  { label: 'User Management', href: '/admin/users', icon: Users },
+  { label: 'Student AI History', href: '/admin/ai-history/students', icon: MessageSquare },
+  { label: 'Teacher AI History', href: '/admin/ai-history/teachers', icon: MessageSquare },
+  { label: 'College Management', href: '/admin/colleges', icon: Building },
+  { label: 'Question Bank', href: '/admin/question-bank', icon: BookOpen },
+  { label: 'Analytics', href: '/admin/analytics', icon: Activity },
+  { label: 'Database Status', href: '/admin/database', icon: Database },
+  { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
-export default function TeacherDashboardLayout({
+export default function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -29,26 +34,21 @@ export default function TeacherDashboardLayout({
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [teacherName, setTeacherName] = useState('');
 
   const isDark = mounted ? resolvedTheme === 'dark' : true;
 
   useEffect(() => {
     setMounted(true);
-    const token = localStorage.getItem('teacherToken');
-    const name = localStorage.getItem('teacherName');
+    const token = localStorage.getItem('adminToken');
     if (!token) {
-      router.push('/teacher/login');
+      router.push('/admin/login');
       return;
     }
-    if (name) setTeacherName(name);
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('teacherToken');
-    localStorage.removeItem('teacherName');
-    localStorage.removeItem('teacherEmail');
-    router.push('/teacher/login');
+    localStorage.removeItem('adminToken');
+    router.push('/admin/login');
   };
 
   return (
@@ -68,11 +68,11 @@ export default function TeacherDashboardLayout({
             {/* Logo */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4">
               <Link href="/" className="flex items-center gap-2.5 group">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
                   <Sparkles size={16} className="text-white" />
                 </div>
                 <span className="text-base font-bold tracking-tight">
-                  Campus<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Mind</span>
+                  Campus<span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-indigo-600">Mind</span>
                 </span>
               </Link>
               <button
@@ -83,17 +83,17 @@ export default function TeacherDashboardLayout({
               </button>
             </div>
 
-            {/* Teacher Badge */}
+            {/* Admin Badge */}
             <div className={`mx-4 mb-4 px-3 py-2 rounded-xl text-xs font-medium ${
-              isDark ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-600 border border-blue-200'
+              isDark ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-50 text-purple-600 border border-purple-200'
             }`}>
-              🎓 Teacher Portal
+              🛡️ Admin Portal
             </div>
 
             {/* Navigation */}
             <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
               {sidebarItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
                   <Link key={item.href} href={item.href}>
@@ -106,7 +106,7 @@ export default function TeacherDashboardLayout({
                           : (isDark ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-black/60 hover:text-black hover:bg-black/5')
                       }`}
                     >
-                      <Icon size={18} className={isActive ? (isDark ? 'text-blue-400' : 'text-blue-600') : ''} />
+                      <Icon size={18} className={isActive ? (isDark ? 'text-purple-400' : 'text-purple-600') : ''} />
                       {item.label}
                       {isActive && (
                         <ChevronRight size={14} className="ml-auto opacity-40" />
@@ -147,12 +147,12 @@ export default function TeacherDashboardLayout({
               <div className={`mt-3 px-3 py-2 rounded-xl flex items-center gap-3 ${
                 isDark ? 'bg-white/5' : 'bg-black/5'
               }`}>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-xs font-bold shadow-md">
-                  {teacherName ? teacherName.charAt(0).toUpperCase() : 'T'}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
+                  A
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">{teacherName || 'Teacher'}</div>
-                  <div className="text-[10px] opacity-50 truncate">Teacher</div>
+                  <div className="text-xs font-medium truncate">System Admin</div>
+                  <div className="text-[10px] opacity-50 truncate">admin@campusmind.ai</div>
                 </div>
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function TeacherDashboardLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>

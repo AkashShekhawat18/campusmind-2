@@ -15,6 +15,7 @@ import json
 
 from services.embedding_service import get_embeddings
 from services.vector_service import store_chunks
+from services.ocr_service import correct_ocr_text_with_ai
 
 def get_groq_client():
     keys = os.environ.get("GROQ_API_KEYS", "")
@@ -55,7 +56,7 @@ async def extract_text(file: UploadFile) -> str:
                                 {
                                     "role": "user",
                                     "content": [
-                                        {"type": "text", "text": "Extract all text from this image exactly as written. If there are diagrams, describe them briefly. If there is no text, describe the image."},
+                                        {"type": "text", "text": "You are an expert academic OCR engine. Extract all text, equations, and tables perfectly. CRITICAL: 1. PRESERVE MATH/SCIENCE STRUCTURE using LaTeX ($...$ for inline, $$...$$ for block). Never flatten matrices, integrals, or fractions. 2. CORRECT OCR ERRORS in math context (e.g., '1' vs 'l', '0' vs 'O', 'x' vs '\\times'). 3. Form chemistry/physics formulas properly. 4. Convert tables to Markdown. 5. If there's a diagram, describe it briefly. NO CONVERSATIONAL FILLER."},
                                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
                                     ],
                                 }
@@ -65,6 +66,10 @@ async def extract_text(file: UploadFile) -> str:
                         page_text = res.choices[0].message.content
                     except Exception as e:
                         print(f"Groq Vision failed on PDF page {page_num}: {e}")
+                else:
+                    # Pass the extracted text through the AI corrector to reconstruct math/tables properly
+                    page_text = correct_ocr_text_with_ai(page_text)
+                
                 
                 text += page_text + "\n\n"
                 
@@ -108,7 +113,7 @@ async def extract_text(file: UploadFile) -> str:
                         {
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": "Extract all text from this image exactly as written. If there are diagrams or charts, describe them in detail. If there is no text, describe the image fully."},
+                                {"type": "text", "text": "You are an expert academic OCR engine. Extract all text, equations, and tables perfectly. CRITICAL: 1. PRESERVE MATH/SCIENCE STRUCTURE using LaTeX ($...$ for inline, $$...$$ for block). Never flatten matrices, integrals, or fractions. 2. CORRECT OCR ERRORS in math context (e.g., '1' vs 'l', '0' vs 'O', 'x' vs '\\times'). 3. Form chemistry/physics formulas properly. 4. Convert tables to Markdown. 5. If there's a diagram, describe it in detail. NO CONVERSATIONAL FILLER."},
                                 {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}},
                             ],
                         }
@@ -118,13 +123,14 @@ async def extract_text(file: UploadFile) -> str:
                 text = res.choices[0].message.content
             except Exception as e:
                 print(f"Groq Image Vision failed: {e}")
-                text = "Failed to extract text from image."
+                text = ""
         else:
-            text = f"Unsupported file type: {filename}"
+            print(f"Unsupported file type: {filename}")
+            text = ""
             
     except Exception as e:
         print(f"Text extraction error for {filename}: {e}")
-        text = f"Error extracting text from {filename}."
+        text = ""
         
     return text
 

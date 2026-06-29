@@ -2,9 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Send, X, Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 interface PYQAssistantProps {
   paperId: string;
@@ -108,9 +106,7 @@ export default function PYQAssistant({ paperId, isOpen, onClose }: PYQAssistantP
                     : (isDark ? 'bg-white/5 border border-white/5 rounded-bl-sm prose prose-sm prose-invert max-w-none' : 'bg-black/5 border border-black/5 rounded-bl-sm prose prose-sm max-w-none')
                 }`}>
                   {msg.role === 'assistant' ? (
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                      {msg.content}
-                    </ReactMarkdown>
+                    <MarkdownRenderer content={msg.content} messageId={`pyq-${i}`} />
                   ) : (
                     msg.content
                   )}

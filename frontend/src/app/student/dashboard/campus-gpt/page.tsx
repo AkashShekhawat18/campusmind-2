@@ -3,12 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useDropzone } from 'react-dropzone';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import {
   Search, MessageSquare, Plus, Send, Bot, Trash2,
   Edit3, Check, X, Copy, CheckCheck, Paperclip, FileText, Image as ImageIcon,
@@ -126,9 +122,9 @@ export default function StudentCampusGPT() {
         setAttachedFiles(prev => prev.map(f => f.id === id && f.status === 'uploading' ? { ...f, status: 'extracting' } : f));
       }, 500);
 
-      const res = await fetch('/api/ai/upload', {
+      const res = await fetch('http://localhost:8000/api/ai/upload', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
       
       const text = await res.text();
@@ -230,7 +226,7 @@ export default function StudentCampusGPT() {
       const historyForPython = updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
       formData.append('history', JSON.stringify(historyForPython));
 
-      const res = await fetch('/api/ai/chat/stream', {
+      const res = await fetch('http://localhost:8000/api/ai/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()
@@ -502,35 +498,7 @@ export default function StudentCampusGPT() {
                           {msg.content === '' ? (
                             <span className="animate-pulse">Thinking...</span>
                           ) : (
-                            <ReactMarkdown
-                              remarkPlugins={[remarkMath]}
-                              rehypePlugins={[rehypeKatex]}
-                              components={{
-                                code({ className, children, ...props }) {
-                                  const match = /language-(\w+)/.exec(className || '');
-                                  const codeStr = String(children).replace(/\n$/, '');
-                                  return match ? (
-                                    <div className="relative group/code my-3">
-                                      <button
-                                        onClick={() => handleCopy(codeStr, msg.id + match[1])}
-                                        className="absolute top-2 right-2 p-1.5 rounded-md bg-white/10 opacity-0 group-hover/code:opacity-100 transition-opacity"
-                                      >
-                                        {copiedId === msg.id + match[1] ? <CheckCheck size={12} className="text-green-400" /> : <Copy size={12} />}
-                                      </button>
-                                      <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" className="rounded-xl !bg-[#1a1a1c] !text-sm">
-                                        {codeStr}
-                                      </SyntaxHighlighter>
-                                    </div>
-                                  ) : (
-                                    <code className={`px-1.5 py-0.5 rounded-md text-sm ${isDark ? 'bg-white/10' : 'bg-black/10'}`} {...props}>
-                                      {children}
-                                    </code>
-                                  );
-                                }
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
+                            <MarkdownRenderer content={msg.content} messageId={msg.id} />
                           )}
                         </div>
                       ) : (

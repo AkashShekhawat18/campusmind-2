@@ -2,12 +2,9 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { X, Sparkles, BookOpen, Loader2, GitCompare } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+
 interface QuestionComparisonViewProps {
-  currentQuestion: any;
   historicalMatch: any;
   onClose: () => void;
 }
@@ -108,9 +105,7 @@ export default function QuestionComparisonView({ currentQuestion, historicalMatc
                 <span className="text-xs font-bold uppercase tracking-wider opacity-50">Current Question</span>
               </div>
               <div className="text-sm leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                  {currentQuestion.questionText}
-                </ReactMarkdown>
+                <MarkdownRenderer content={currentQuestion.questionText} messageId={`compare-curr-${currentQuestion.id}`} />
               </div>
               
               <div className="mt-6 flex flex-wrap gap-3">
@@ -143,9 +138,7 @@ export default function QuestionComparisonView({ currentQuestion, historicalMatc
                 <span className="text-xs font-bold uppercase tracking-wider text-blue-500">Historical Match</span>
               </div>
               <div className="text-sm leading-relaxed opacity-80">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                  {historicalMatch.matchedQuestion?.questionText || ''}
-                </ReactMarkdown>
+                <MarkdownRenderer content={historicalMatch.matchedQuestion?.questionText} messageId={`compare-hist-${historicalMatch.id}`} />
               </div>
               <div className="mt-6 pt-4 border-t border-current border-opacity-10">
                 <p className="text-[11px] uppercase font-bold tracking-wider opacity-50 mb-1">Found In</p>
@@ -165,9 +158,7 @@ export default function QuestionComparisonView({ currentQuestion, historicalMatc
                     <span className="text-xs font-bold uppercase tracking-wider text-purple-500">AI Rewritten Question</span>
                   </div>
                   <div className="text-sm leading-relaxed">
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                      {rewrittenText}
-                    </ReactMarkdown>
+                    <MarkdownRenderer content={rewrittenText} messageId="compare-rewrite" />
                   </div>
                 </div>
               )}
@@ -179,7 +170,7 @@ export default function QuestionComparisonView({ currentQuestion, historicalMatc
                     <span className="text-xs font-bold uppercase tracking-wider text-blue-500">AI Model Answer</span>
                   </div>
                   <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{modelAnswer}</ReactMarkdown>
+                    <MarkdownRenderer content={modelAnswer} messageId="compare-answer" />
                   </div>
                 </div>
               )}
