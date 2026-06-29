@@ -8,6 +8,42 @@ import { User } from 'lucide-react';
 export default function TeacherRegister() {
   const [submitted, setSubmitted] = useState(false);
 
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role: 'TEACHER' })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (submitted) {
     return (
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-panel p-8 rounded-2xl text-center glow-border">
@@ -31,10 +67,16 @@ export default function TeacherRegister() {
         <p className="text-foreground/60 text-sm mt-2 text-center">Join the faculty network</p>
       </div>
 
-      <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}>
+      {error && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+          {error}
+        </div>
+      )}
+
+      <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleSubmit}>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Full Name</label>
-          <input type="text" required className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="Dr. Jane Smith" />
+          <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="Dr. Jane Smith" />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Employee ID</label>
@@ -46,7 +88,7 @@ export default function TeacherRegister() {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Email</label>
-          <input type="email" required className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="jane@campusmind.edu" />
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="jane@campusmind.edu" />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Phone Number</label>
@@ -54,16 +96,16 @@ export default function TeacherRegister() {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Password</label>
-          <input type="password" required className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="••••••••" />
+          <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="••••••••" />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Confirm Password</label>
-          <input type="password" required className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="••••••••" />
+          <input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="••••••••" />
         </div>
         
         <div className="col-span-1 md:col-span-2 mt-4">
-          <button type="submit" className="w-full py-3 rounded-lg bg-electric-violet text-foreground font-semibold hover:bg-electric-violet/90 transition-colors shadow-[0_0_15px_rgba(138,43,226,0.4)] cursor-pointer">
-            Register Account
+          <button type="submit" disabled={loading} className="w-full py-3 rounded-lg bg-electric-violet text-foreground font-semibold hover:bg-electric-violet/90 transition-colors shadow-[0_0_15px_rgba(138,43,226,0.4)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            {loading ? 'Registering...' : 'Register Account'}
           </button>
         </div>
       </form>

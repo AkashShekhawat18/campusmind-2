@@ -24,6 +24,10 @@ model User {
   downloadedResources DownloadedResource[]
   recentResources    RecentResource[]
   studentActivities  StudentActivity[]
+  admin              Admin?
+  notifications      Notification[]
+  announcements      Announcement[]
+  loginHistories     LoginHistory[]
 }
 
 model Chat {
@@ -281,4 +285,123 @@ model StudentActivity {
   details    String?
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Phase 3: Admin Portal Models ──────────────────────────────
+
+model Admin {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  roleId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           Role     @relation(fields: [roleId], references: [id])
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique // SUPER_ADMIN, MODERATOR, etc.
+  description String?
+  admins      Admin[]
+  permissions Permission[] @relation("RolePermissions")
+}
+
+model Permission {
+  id          String       @id @default(uuid())
+  name        String       @unique // e.g. "DELETE_USER", "MANAGE_ROLES"
+  description String?
+  roles       Role[]       @relation("RolePermissions")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   // ANNOUNCEMENT, ALERT, REMINDER
+  target    String   // ALL, STUDENTS, TEACHERS, INDIVIDUAL
+  userId    String?  // If target is INDIVIDUAL
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        DateTime
+  location    String?
+  type        String   // WORKSHOP, SEMINAR, HOLIDAY
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  authorId    String
+  createdAt   DateTime @default(now())
+  author      User     @relation(fields: [authorId], references: [id])
+}
+
+model SystemSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  status    String   // SUCCESS, FAILED
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Approval {
+  id           String   @id @default(uuid())
+  entityType   String   // STUDENT, TEACHER, COLLEGE
+  entityId     String
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  requestedBy  String
+  reviewedBy   String?
+  reviewNotes  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  collegeId String
+  createdAt DateTime @default(now())
+  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  branches  Branch[]
+}
+
+model Branch {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+  createdAt    DateTime   @default(now())
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+}
+
+model College {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  location    String?
+  createdAt   DateTime     @default(now())
+  departments Department[]
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  year      String   @unique // e.g. "2026-2027"
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

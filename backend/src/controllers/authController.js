@@ -20,21 +20,35 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const userRole = role || 'STUDENT';
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: role || 'STUDENT'
+        role: userRole
       }
     });
 
+    // Enforce Approval Workflow for non-admins
+    if (userRole !== 'ADMIN') {
+      await prisma.approval.create({
+        data: {
+          entityType: userRole,
+          entityId: user.id,
+          status: 'PENDING',
+          requestedBy: user.id
+        }
+      });
+    }
+
     res.status(201).json({
+      message: 'Account created successfully. Awaiting admin approval.',
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
-      token: generateToken(user.id)
+      role: user.role
+      // Token is intentionally omitted to prevent immediate login
     });
   } catch (error) {
     console.error(error);
@@ -49,6 +63,22 @@ const loginUser = async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (user && (await bcrypt.compare(password, user.password))) {
+      // Check approval status for non-admins
+      if (user.role !== 'ADMIN') {
+        const approval = await prisma.approval.findFirst({
+          where: { entityId: user.id },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        if (approval) {
+          if (approval.status === 'PENDING') {
+            return res.status(403).json({ error: 'Your account is pending admin approval.' });
+          } else if (approval.status === 'REJECTED') {
+            return res.status(403).json({ error: 'Your account registration was rejected.' });
+          }
+        }
+      }
+
       res.json({
         id: user.id,
         name: user.name,
