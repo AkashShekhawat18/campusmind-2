@@ -3,7 +3,7 @@ import io
 from PIL import Image
 from fastapi import UploadFile
 from typing import List, Dict, Any
-from .ocr_service import extract_text_with_vision_api, correct_ocr_text_with_ai
+from .ocr_service import extract_text_with_vision_api
 from .image_preprocessing import preprocess_for_ocr
 
 async def ingest_pdf(file: UploadFile) -> List[Dict[str, Any]]:
@@ -22,10 +22,6 @@ async def ingest_pdf(file: UploadFile) -> List[Dict[str, Any]]:
         text = page.get_text().strip()
         extraction_method = "text_layer"
         
-        if len(text) >= 50:
-            # Reconstruct math and tables using AI corrector if text layer is present
-            text = correct_ocr_text_with_ai(text)
-            
         # 2. If no text layer, it's likely a scanned PDF or image
         if len(text) < 50:
             pix = page.get_pixmap(matrix=fitz.Matrix(2, 2)) # High resolution rendering

@@ -21,13 +21,9 @@ def retrieve_context(query: str, user_id: str, top_k: int = 5) -> str:
         
     # 3. Format context
     context_parts = []
-    # Using L2 distance threshold (default for all-MiniLM-L6-v2). Lower is more similar.
-    # A typical threshold for relevance might be around 1.5
     for res in results:
-        distance = res.get("distance", 0)
-        if distance > 1.5:
-            continue
-            
+        # Distance is a measure of similarity (smaller is better usually for L2)
+        # We can optionally filter out results that are too far
         filename = res["metadata"].get("filename", "Unknown file")
         text = res["text"]
         context_parts.append(f"--- SOURCE: {filename} ---\n{text}\n")

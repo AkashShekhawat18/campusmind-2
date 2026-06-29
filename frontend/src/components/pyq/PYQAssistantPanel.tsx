@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Bot, Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 export default function PYQAssistantPanel({ paperId, onClose }: { paperId: string, onClose: () => void }) {
   const { resolvedTheme } = useTheme();
@@ -95,7 +98,9 @@ export default function PYQAssistantPanel({ paperId, onClose }: { paperId: strin
                   msg.content
                 ) : (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <MarkdownRenderer content={msg.content} messageId={`pyq-${i}`} />
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {msg.content}
+                    </ReactMarkdown>
                   </div>
                 )}
               </div>

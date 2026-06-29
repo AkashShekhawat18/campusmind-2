@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { FileText, Loader2, ChevronDown, ChevronUp, Sparkles, AlertCircle, Copy, BookOpen, Bot } from 'lucide-react';
-import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import QuestionComparisonView from './QuestionComparisonView';
 import PYQAssistantPanel from './PYQAssistantPanel';
 
@@ -118,7 +121,9 @@ export default function PaperPreviewPanel({ paper, onClose }: PaperPreviewPanelP
                     </div>
                     <div className="flex-1">
                       <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-                        <MarkdownRenderer content={q.questionText} messageId={`q-${q.id}`} />
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {q.questionText}
+                        </ReactMarkdown>
                       </div>
                       <div className="flex items-center gap-3 mt-3 flex-wrap">
                         {q.marks && <span className={`text-[10px] px-2 py-1 rounded-md uppercase font-bold tracking-wider ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>{q.marks} MARKS</span>}
@@ -205,7 +210,7 @@ export default function PaperPreviewPanel({ paper, onClose }: PaperPreviewPanelP
                <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}>
                  <h4 className="text-[10px] uppercase font-bold tracking-wider opacity-50 mb-2">Original Question</h4>
                  <div className="text-xs leading-relaxed opacity-80 prose prose-sm dark:prose-invert max-w-none">
-                    <MarkdownRenderer content={activeGeneration.question.questionText} messageId="active-gen-q" />
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{activeGeneration.question.questionText}</ReactMarkdown>
                  </div>
                </div>
 
@@ -218,7 +223,7 @@ export default function PaperPreviewPanel({ paper, onClose }: PaperPreviewPanelP
                     </div>
                  ) : (
                     <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-                       <MarkdownRenderer content={activeGeneration.rewrittenText} messageId="active-gen-r" />
+                       <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{activeGeneration.rewrittenText}</ReactMarkdown>
                     </div>
                  )}
                </div>

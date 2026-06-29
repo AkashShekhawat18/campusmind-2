@@ -13,5 +13,3 @@ sentence-transformers
 opencv-python-headless
 numpy
 requests
-sse-starlette
-python-multipart
