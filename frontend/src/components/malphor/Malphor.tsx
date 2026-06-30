@@ -25,7 +25,7 @@ export function Malphor() {
   const safeZones = useSafeZones();
 
   // 2. Waypoint movement for gliding along the right side
-  const { currentWaypoint, offset, moveToWaypoint } = useWaypointMovement(safeZones, 180);
+  const { currentWaypoint, offset, moveToWaypoint } = useWaypointMovement(safeZones, 140);
 
   // 3. Complex behavioral state machine (handles entry, hover, clicks)
   const {
@@ -69,10 +69,10 @@ export function Malphor() {
         }}
         transition={{ type: 'spring', stiffness: 50, damping: 15, mass: 1 }}
         onClick={handleToggleChat}
-        className="fixed bottom-6 right-6 z-40 w-[180px] h-[220px] cursor-pointer select-none group focus:outline-none"
+        className="fixed bottom-2 right-2 z-40 w-[140px] h-[175px] cursor-pointer select-none group focus:outline-none"
       >
         {/* Speech bubble — rendered in DOM layer above 3D canvas */}
-        <div className="absolute bottom-[140px] right-[140px] w-[250px] pointer-events-none z-50">
+        <div className="absolute bottom-[120px] right-[100px] w-[220px] pointer-events-none z-50">
           <MalphorBubble text={bubbleText} visible={bubbleVisible} />
         </div>
 

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import {
   LayoutDashboard, MessageSquare, FileText, BookOpen,
-  Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles
+  Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles, CalendarDays
 } from 'lucide-react';
 import { WeatherWidget } from '@/components/widgets/WeatherWidget';
 
@@ -15,6 +15,7 @@ const sidebarItems = [
   { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
   { label: 'Campus GPT', href: '/teacher/dashboard/campus-gpt', icon: MessageSquare },
   { label: 'PYQ Analyzer', href: '/teacher/dashboard/pyq-analyzer', icon: FileText },
+  { label: 'Calendar', href: '/teacher/dashboard/calendar', icon: CalendarDays },
   { label: 'BITS Pilani Resources', href: '/teacher/dashboard/resources', icon: BookOpen },
   { label: 'Settings', href: '/teacher/dashboard/settings', icon: Settings },
 ];

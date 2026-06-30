@@ -24,6 +24,12 @@ const {
   deleteChat
 } = require('../controllers/teacherController');
 
+const {
+  getEvents,
+  createEvent,
+  deleteEvent
+} = require('../controllers/calendarController');
+
 const router = express.Router();
 
 // All teacher routes require authentication + TEACHER role
@@ -58,5 +64,10 @@ router.post('/chat/save', require('../controllers/teacherController').saveStream
 router.get('/chat/history', getTeacherChats);
 router.put('/chat/:id', renameChat);
 router.delete('/chat/:id', deleteChat);
+
+// Calendar Routes
+router.get('/calendar/schedule', getEvents);
+router.post('/calendar/schedule', createEvent);
+router.delete('/calendar/schedule/:id', deleteEvent);
 
 module.exports = router;

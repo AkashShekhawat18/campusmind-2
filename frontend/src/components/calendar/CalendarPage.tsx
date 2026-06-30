@@ -61,6 +61,7 @@ interface CalendarPageProps {
 }
 
 export default function CalendarPage({ role }: CalendarPageProps) {
+  const [mounted, setMounted] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -75,14 +76,15 @@ export default function CalendarPage({ role }: CalendarPageProps) {
   const [assignToAll, setAssignToAll] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const token = typeof window !== 'undefined' 
       ? (role === "teacher" ? localStorage.getItem("teacherToken") : localStorage.getItem("studentToken"))
       : null;
     if (!token) return;
 
     const endpoint = role === "teacher" 
-      ? "http://localhost:5000/api/teacher/calendar/events" 
-      : "http://localhost:5000/api/student/calendar/events";
+      ? "http://localhost:5000/api/teacher/calendar/schedule" 
+      : "http://localhost:5000/api/student/calendar/schedule";
 
     fetch(endpoint, {
       headers: { Authorization: `Bearer ${token}` }
@@ -131,7 +133,7 @@ export default function CalendarPage({ role }: CalendarPageProps) {
 
     const token = typeof window !== 'undefined' ? localStorage.getItem("teacherToken") : null;
     try {
-      const res = await fetch("http://localhost:5000/api/teacher/calendar/events", {
+      const res = await fetch("http://localhost:5000/api/teacher/calendar/schedule", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -161,7 +163,7 @@ export default function CalendarPage({ role }: CalendarPageProps) {
 
     const token = typeof window !== 'undefined' ? localStorage.getItem("teacherToken") : null;
     try {
-      const res = await fetch(`http://localhost:5000/api/teacher/calendar/events/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/teacher/calendar/schedule/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -180,6 +182,8 @@ export default function CalendarPage({ role }: CalendarPageProps) {
     const dStr = formatLocalDate(date);
     return events.some((e) => e.dateStr === dStr);
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="flex flex-col min-h-screen p-6 md:p-8 space-y-8">

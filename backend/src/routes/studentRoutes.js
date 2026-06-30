@@ -18,6 +18,8 @@ const {
   deleteChat
 } = require('../controllers/studentController');
 
+const { getEvents } = require('../controllers/calendarController');
+
 const router = express.Router();
 
 // All student routes require authentication + STUDENT role
@@ -49,5 +51,8 @@ router.post('/chat/save', require('../controllers/teacherController').saveStream
 router.get('/chat/history', getStudentChats);
 router.put('/chat/:id', renameChat);
 router.delete('/chat/:id', deleteChat);
+
+// Calendar Route
+router.get('/calendar/schedule', getEvents);
 
 module.exports = router;
