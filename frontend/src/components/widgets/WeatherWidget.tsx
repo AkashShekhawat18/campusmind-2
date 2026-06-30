@@ -34,28 +34,36 @@ const getWeatherDetails = (code: number) => {
 };
 
 const fetchIpLocation = async () => {
-  const res = await fetch('https://ipwho.is/');
-  if (!res.ok) throw new Error('IP lookup failed');
-  return await res.json();
+  try {
+    const res = await fetch('https://ipwho.is/').catch(() => null);
+    if (!res || !res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
 };
 
-const fetchWeather = async (lat: number, lon: number, city: string): Promise<WeatherData> => {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,visibility`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Weather fetch failed');
-  const data = await res.json();
-  const current = data.current;
+const fetchWeather = async (lat: number, lon: number, city: string): Promise<WeatherData | null> => {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,visibility`;
+    const res = await fetch(url).catch(() => null);
+    if (!res || !res.ok) return null;
+    const data = await res.json();
+    const current = data.current;
 
-  return {
-    city,
-    temp: Math.round(current.temperature_2m),
-    conditionCode: current.weather_code,
-    feelsLike: Math.round(current.apparent_temperature),
-    humidity: current.relative_humidity_2m,
-    windSpeed: Math.round(current.wind_speed_10m),
-    visibility: Math.round(current.visibility / 1000), // convert to km
-    timestamp: Date.now()
-  };
+    return {
+      city,
+      temp: Math.round(current.temperature_2m),
+      conditionCode: current.weather_code,
+      feelsLike: Math.round(current.apparent_temperature),
+      humidity: current.relative_humidity_2m,
+      windSpeed: Math.round(current.wind_speed_10m),
+      visibility: Math.round(current.visibility / 1000), // convert to km
+      timestamp: Date.now()
+    };
+  } catch (e) {
+    return null;
+  }
 };
 
 const WeatherWidgetBase = () => {
@@ -89,36 +97,29 @@ const WeatherWidgetBase = () => {
 
       const getLocationAndWeather = async (lat: number, lon: number, city: string) => {
         const weather = await fetchWeather(lat, lon, city);
-        setData(weather);
-        localStorage.setItem(CACHE_KEY, JSON.stringify(weather));
-        setError(false);
+        if (weather) {
+          setData(weather);
+          localStorage.setItem(CACHE_KEY, JSON.stringify(weather));
+          setError(false);
+        } else {
+          setError(true);
+        }
         setLoading(false);
       };
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
-            try {
-              let city = 'Local';
-              try {
-                const ipInfo = await fetchIpLocation();
-                if (ipInfo && ipInfo.city) city = ipInfo.city;
-              } catch (e) {
-                // Ignore IP lookup failure, fallback to Local
-              }
-              await getLocationAndWeather(position.coords.latitude, position.coords.longitude, city);
-            } catch (err) {
-              console.error("Weather fetch error (coords):", err);
-              setError(true);
-              setLoading(false);
-            }
+            let city = 'Local';
+            const ipInfo = await fetchIpLocation();
+            if (ipInfo && ipInfo.city) city = ipInfo.city;
+            await getLocationAndWeather(position.coords.latitude, position.coords.longitude, city);
           },
           async () => {
-            try {
-              const ipInfo = await fetchIpLocation();
+            const ipInfo = await fetchIpLocation();
+            if (ipInfo) {
               await getLocationAndWeather(ipInfo.latitude, ipInfo.longitude, ipInfo.city || 'Unknown');
-            } catch (err) {
-              console.error("Weather fetch error (ip):", err);
+            } else {
               setError(true);
               setLoading(false);
             }
@@ -127,10 +128,14 @@ const WeatherWidgetBase = () => {
         );
       } else {
         const ipInfo = await fetchIpLocation();
-        await getLocationAndWeather(ipInfo.latitude, ipInfo.longitude, ipInfo.city || 'Unknown');
+        if (ipInfo) {
+          await getLocationAndWeather(ipInfo.latitude, ipInfo.longitude, ipInfo.city || 'Unknown');
+        } else {
+          setError(true);
+          setLoading(false);
+        }
       }
     } catch (err) {
-      console.error("Weather fetch error:", err);
       setError(true);
       setLoading(false);
     }
