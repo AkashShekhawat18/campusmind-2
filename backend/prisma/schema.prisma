@@ -1,0 +1,656 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Identity & Auth ──────────────────────────────
+model User {
+  id                 String          @id @default(uuid())
+  officialId         String?         @unique
+  name               String
+  email              String          @unique
+  password           String
+  role               String          @default("STUDENT") // STUDENT, TEACHER, ADMIN
+  status             String          @default("PENDING") // PENDING, ACTIVE, REJECTED, SUSPENDED
+  firstLogin         Boolean         @default(true)
+  lastLogin          DateTime?
+  lastPasswordChange DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @default(now()) @updatedAt
+
+  @@index([role])
+  @@index([status, createdAt])
+
+  chats               Chat[]
+  aiSessions          AiSession[]
+  questionPapers      QuestionPaper[]
+  resources           Resource[]
+  auditLogs           AuditLog[]
+  bookmarks           Bookmark[]
+  downloadedResources DownloadedResource[]
+  recentResources     RecentResource[]
+  studentActivities   StudentActivity[]
+  notifications       Notification[]
+  notificationReads   NotificationRead[]
+  announcements       Announcement[]
+  loginHistories      LoginHistory[]
+  passwordResetTokens PasswordResetToken[]
+  sessions            Session[]
+
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
+  adminProfile   AdminProfile?
+}
+
+model StudentProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  rollNumber       String?   @unique
+  enrollmentNumber String?   @unique
+  admissionYear    Int?
+  guardianName     String?
+  guardianPhone    String?
+  profilePhoto     String?
+  status           String    @default("ACTIVE")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
+
+  currentSemesterId String?
+  currentSectionId  String?
+  branchId          String?
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentSemester Semester? @relation(fields: [currentSemesterId], references: [id])
+  currentSection  Section?  @relation(fields: [currentSectionId], references: [id])
+  branch          Branch?   @relation(fields: [branchId], references: [id])
+  enrollments     Enrollment[]
+  attendance      Attendance[]
+
+  @@index([branchId])
+  @@index([currentSemesterId])
+  @@index([currentSectionId])
+}
+
+model TeacherProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  employeeId     String?   @unique
+  designation    String?
+  officeLocation String?
+  qualification  String?
+  joiningDate    DateTime?
+  status         String    @default("ACTIVE")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+
+  departmentId String?
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department        Department?        @relation(fields: [departmentId], references: [id])
+  courseAssignments CourseAssignment[]
+}
+
+model AdminProfile {
+  id           String      @id @default(uuid())
+  userId       String      @unique
+  roleId       String
+  departmentId String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
+  
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role        @relation(fields: [roleId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+}
+
+// ─── ERP Academic Hierarchy ──────────────────────────────
+model College {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  location    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now()) @updatedAt
+  departments Department[]
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  collegeId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  
+  college       College          @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  branches      Branch[]
+  programs      Program[]
+  teachers      TeacherProfile[]
+  adminProfiles AdminProfile[]
+}
+
+model Branch {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @default(now()) @updatedAt
+  
+  department      Department       @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  studentProfiles StudentProfile[]
+  subjects        Subject[]
+}
+
+model Program {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @default(now()) @updatedAt
+  
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  semesters  Semester[]
+}
+
+model AcademicYear {
+  id                String             @id @default(uuid())
+  year              String             @unique // e.g. "2026-2027"
+  isCurrent         Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now()) @updatedAt
+  semesters         Semester[]
+  enrollments       Enrollment[]
+  courseAssignments CourseAssignment[]
+}
+
+model Semester {
+  id             String         @id @default(uuid())
+  number         Int
+  programId      String
+  academicYearId String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  
+  program         Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  academicYear    AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  sections        Section[]
+  subjects        Subject[]
+  studentProfiles StudentProfile[]
+}
+
+model Section {
+  id         String   @id @default(uuid())
+  name       String
+  semesterId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  
+  semester          Semester           @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  studentProfiles   StudentProfile[]
+  courseAssignments CourseAssignment[]
+}
+
+model Subject {
+  id         String   @id @default(uuid())
+  name       String
+  code       String?
+  credits    Int?
+  semesterId String?
+  branchId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  
+  semester          Semester?          @relation(fields: [semesterId], references: [id])
+  branch            Branch?            @relation(fields: [branchId], references: [id])
+  questionPapers    QuestionPaper[]
+  resources         Resource[]
+  courseAssignments CourseAssignment[]
+  enrollments       Enrollment[]
+
+  @@unique([name, code])
+}
+
+model CourseAssignment {
+  id               String   @id @default(uuid())
+  teacherProfileId String
+  subjectId        String
+  sectionId        String
+  academicYearId   String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+  
+  teacher      TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  subject      Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  section      Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  attendance   Attendance[]
+
+  @@index([sectionId])
+  @@index([teacherProfileId])
+}
+
+model Enrollment {
+  id               String   @id @default(uuid())
+  studentProfileId String
+  subjectId        String
+  academicYearId   String
+  status           String   @default("ACTIVE") // ACTIVE, COMPLETED, DROPPED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+  
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  subject        Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([academicYearId])
+}
+
+// ─── File Management & Resources ──────────────────────────────
+model Resource {
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
+  fileType         String   // PDF, DOCX, PPT, IMAGE, NOTES, ASSIGNMENT, PYQ
+  filePath         String
+  originalFileName String
+  fileSize         Int
+  department       String?  // Legacy compat
+  semester         Int?     // Legacy compat
+  subjectName      String?  // Legacy compat
+  subjectId        String?
+  uploadedById     String
+  visibility       String   @default("PUBLIC") // PUBLIC, PRIVATE, SECTION_ONLY
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  subject      Subject?             @relation(fields: [subjectId], references: [id])
+  uploadedBy   User                 @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  bookmarks    Bookmark[]
+  downloadedBy DownloadedResource[]
+  recentViews  RecentResource[]
+
+  @@index([subjectId])
+}
+
+// ─── AI, CampusGPT, & OCR (Existing models retained & improved) ──────────────────────────────
+model AiSession {
+  id         String    @id @default(uuid())
+  userId     String
+  startTime  DateTime  @default(now())
+  endTime    DateTime?
+  tokenUsage Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Chat {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  chatId         String
+  role           String   // user, assistant
+  content        String
+  fileReferences String?  // JSON
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+  
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+}
+
+// --- Question Paper Engine (Unchanged for compatibility) ---
+model QuestionPaper {
+  id                 String              @id @default(uuid())
+  title              String
+  year               Int
+  semester           Int
+  examType           String?
+  department         String?
+  academicYear       String?
+  filePath           String
+  originalFileName   String
+  extractedText      String?
+  isProcessed        Boolean             @default(false)
+  uploadType         String              @default("HISTORICAL")
+  subjectId          String?
+  uploadedById       String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @default(now()) @updatedAt
+  subject            Subject?            @relation(fields: [subjectId], references: [id])
+  uploadedBy         User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  extractedQuestions ExtractedQuestion[]
+  analytics          PaperAnalytics?
+  bookmarks          Bookmark[]
+}
+
+model ExtractedQuestion {
+  id                    String             @id @default(uuid())
+  questionText          String
+  questionNumber        String?
+  marks                 Int?
+  topic                 String?
+  section               String?
+  subParts              String?
+  unit                  String?
+  embedding             String?
+  questionPaperId       String
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @default(now()) @updatedAt
+  questionPaper         QuestionPaper      @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+  similarityAsSource    SimilarityResult[] @relation("SourceQuestion")
+  similarityAsMatch     SimilarityResult[] @relation("MatchedQuestion")
+  rewrites              QuestionRewrite[]
+  modelAnswers          ModelAnswer[]
+  topics                QuestionTopic[]    @relation("QuestionToTopic")
+  questionImages        QuestionImage[]
+  questionTables        QuestionTable[]
+  questionEquations     QuestionEquation[]
+  questionDiagrams      QuestionDiagram[]
+}
+
+model QuestionRewrite {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  originalText        String
+  rewrittenText       String
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @default(now()) @updatedAt
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model ModelAnswer {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  answerType          String
+  content             String
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @default(now()) @updatedAt
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionTopic {
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  extractedQuestions ExtractedQuestion[] @relation("QuestionToTopic")
+}
+
+model SimilarityResult {
+  id                  String            @id @default(uuid())
+  sourceQuestionId    String
+  matchedQuestionId   String
+  similarityScore     Float
+  matchType           String
+  matchedYear         Int?
+  matchedPaperTitle   String?
+  matchedSubject      String?
+  matchedSemester     Int?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @default(now()) @updatedAt
+  sourceQuestion      ExtractedQuestion @relation("SourceQuestion", fields: [sourceQuestionId], references: [id], onDelete: Cascade)
+  matchedQuestion     ExtractedQuestion @relation("MatchedQuestion", fields: [matchedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionImage {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  imageUrl            String            
+  description         String?
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionTable {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  tableData           String            
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionEquation {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  latex               String
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionDiagram {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  diagramUrl          String
+  description         String?
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model PaperAnalytics {
+  id                  String        @id @default(uuid())
+  questionPaperId     String        @unique
+  overallSimilarity   Float
+  repeatedCount       Int
+  uniqueCount         Int
+  totalQuestions      Int
+  topicDistribution   String
+  yearDistribution    String
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @default(now()) @updatedAt
+  questionPaper       QuestionPaper @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+}
+
+// ─── User Engagement & Status ──────────────────────────────
+model Bookmark {
+  id              String         @id @default(uuid())
+  userId          String
+  resourceId      String?
+  questionPaperId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now()) @updatedAt
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource        Resource?      @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  questionPaper   QuestionPaper? @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+}
+
+model DownloadedResource {
+  id         String   @id @default(uuid())
+  userId     String
+  resourceId String
+  downloadedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model StudentSettings {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  theme         String   @default("system")
+  notifications Boolean  @default(true)
+  language      String   @default("en")
+  aiPreferences String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+}
+
+model RecentResource {
+  id         String   @id @default(uuid())
+  userId     String
+  resourceId String
+  viewedAt   DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model StudentActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Administration & Tracking ──────────────────────────────
+model Approval {
+  id           String    @id @default(uuid())
+  entityType   String
+  entityId     String
+  status       String    @default("PENDING")
+  requestedBy  String
+  reviewedBy   String?
+  remarks      String?
+  metadata     String?
+  approvedBy   String?
+  approvedAt   DateTime?
+  rejectedBy   String?
+  rejectedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  title     String
+  message   String
+  type      String
+  target    String
+  userId    String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @default(now()) @updatedAt
+  
+  user      User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reads     NotificationRead[]
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  userId         String
+  notificationId String
+  readAt         DateTime     @default(now())
+  
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, notificationId])
+  @@index([userId])
+}
+
+model Role {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  permissions Permission[]   @relation("RolePermissions")
+  admins      AdminProfile[]
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  roles       Role[]   @relation("RolePermissions")
+}
+
+model SystemSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String?
+  entityId   String?
+  details    String?
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        DateTime
+  location    String?
+  type        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  isValid   Boolean  @default(true)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Attendance (Added for Load-Test Capacity Exception) ──────────────────────────────
+model Attendance {
+  id                 String           @id @default(uuid())
+  date               DateTime
+  status             String           // PRESENT, ABSENT, LATE, EXCUSED
+  courseAssignmentId String
+  studentProfileId   String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @default(now()) @updatedAt
+  
+  courseAssignment   CourseAssignment @relation(fields: [courseAssignmentId], references: [id], onDelete: Cascade)
+  studentProfile     StudentProfile   @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@index([courseAssignmentId, date])
+  @@index([studentProfileId])
+  @@unique([courseAssignmentId, studentProfileId, date])
+}
