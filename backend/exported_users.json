@@ -1,0 +1,34 @@
+[
+  {
+    "id": "2354329a-5a28-40a7-9222-cd675cef5473",
+    "name": "Demo Teacher",
+    "email": "teacher@campusmind.ai",
+    "password": "$2b$10$IahUORDxyrVclcVRL6hgO.7XsNJgI1MTU41JWO/SOivabBes21Sji",
+    "role": "TEACHER",
+    "createdAt": "2026-06-25T06:57:57.161Z"
+  },
+  {
+    "id": "0b58265b-fa78-47e8-aba8-2cfc1ecfc867",
+    "name": "Demo Student",
+    "email": "student@campusmind.ai",
+    "password": "$2b$10$MWCcCSmi/z1UBQJqoi1yV.V0uK/co3JiUBOL35lg62ENur2xfj0Ye",
+    "role": "STUDENT",
+    "createdAt": "2026-06-26T18:34:37.032Z"
+  },
+  {
+    "id": "07b09e4b-e938-4973-b3c2-927a71becee9",
+    "name": "Super Admin",
+    "email": "admin@campusmind.com",
+    "password": "$2b$10$Qm0Wp4l5KadZRIy60woqaeuuRhTKTMKTwTHdQlXKqxRz7nsfzzJ82",
+    "role": "ADMIN",
+    "createdAt": "2026-06-29T10:55:30.436Z"
+  },
+  {
+    "id": "97a4dcdc-a684-497c-92e3-d1835cb091f1",
+    "name": "Akash",
+    "email": "akashsingh48m@gmail.com",
+    "password": "$2b$10$qg.acQwI9zeyeHyG0F.paOA5lINoLlRGlfIvjQqIotuhh0kTHWHQK",
+    "role": "TEACHER",
+    "createdAt": "2026-06-29T11:44:30.097Z"
+  }
+]

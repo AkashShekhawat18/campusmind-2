@@ -16,6 +16,27 @@ from services.similarity_service import generate_embedding, find_most_similar
 from services.analytics_service import compute_paper_analytics
 from services.rewrite_service import generate_rewrite
 
+# Import Agents
+from agents.ocr_agent import OCRAgent
+from agents.question_extraction_agent import QuestionExtractionAgent
+from agents.retrieval_agent import RetrievalAgent
+from agents.answer_agent import AnswerAgent
+from agents.verification_agent import VerificationAgent
+from agents.question_generator_agent import QuestionGeneratorAgent
+import chromadb
+
+from services.embedding_service import get_embeddings
+DB_PATH = os.path.join(os.getcwd(), "chroma_data")
+chroma_client = chromadb.PersistentClient(path=DB_PATH)
+
+# Instantiate Agents
+ocr_agent = OCRAgent()
+question_agent = QuestionExtractionAgent()
+retrieval_agent = RetrievalAgent(chroma_client, type('EmbeddingServiceMock', (), {'get_embeddings': get_embeddings}))
+answer_agent = AnswerAgent()
+verification_agent = VerificationAgent()
+q_gen_agent = QuestionGeneratorAgent()
+
 load_dotenv()
 
 app = FastAPI(title="CampusMind AI Microservice", version="1.0")
@@ -72,6 +93,43 @@ async def chat_stream(
         print(f"Chat Stream Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/ai/pyq/chat")
+async def multi_agent_rag_chat(
+    message: str = Form(...),
+    user_id: str = Form(...),
+    history: str = Form("[]")
+):
+    """
+    Multi-Agent RAG Orchestration:
+    1. Retrieval Agent (Hybrid Search + Reranking)
+    2. Answer Agent (Grounded Generation)
+    3. Verification Agent (Hallucination Guard)
+    """
+    try:
+        import json
+        history_list = json.loads(history)
+        
+        # 1. Retrieve
+        print(f"Retrieving context for: {message}")
+        context_results = retrieval_agent.hybrid_search(message, user_id, top_k=5)
+        
+        # 2. Answer
+        print(f"Generating answer...")
+        answer, references = answer_agent.generate_answer(message, context_results, history_list)
+        
+        # 3. Verify (Hallucination Guard)
+        print(f"Verifying answer...")
+        confidence, final_answer = verification_agent.verify_answer(message, answer, context_results)
+        
+        return {
+            "reply": final_answer,
+            "confidence": confidence,
+            "references": references
+        }
+    except Exception as e:
+        print(f"Multi-Agent RAG Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.delete("/api/ai/memory/{user_id}")
 async def clear_memory(user_id: str):
     """
@@ -91,13 +149,24 @@ async def extract_pyq(
     Returns a list of extracted question objects.
     """
     try:
-        pages = await ingest_pdf(file)
+        # We now use the specialized OCR Agent if it's an image or image-PDF
+        # For simple PDFs, ingest_pdf still works, but we should try OCR for robust layout extraction
+        file_bytes = await file.read()
         
-        # Combine all page text
-        full_text = "\n".join([p["text"] for p in pages])
+        try:
+            # Attempt OCR Agent extraction first for highest layout fidelity
+            full_text = ocr_agent.extract_text(file_bytes, file.content_type)
+        except Exception:
+            full_text = None
+            
+        if not full_text:
+            # Fallback to standard PDF ingestion
+            await file.seek(0)
+            pages = await ingest_pdf(file)
+            full_text = "\n".join([p["text"] for p in pages])
         
-        # Extract structured questions
-        questions = extract_questions_from_text(full_text)
+        # Extract structured questions using the specialized agent
+        questions = question_agent.extract_questions(full_text)
         
         # Generate embeddings for each question
         for q in questions:
@@ -107,7 +176,7 @@ async def extract_pyq(
             else:
                 q["embedding"] = []
                 
-        return {"status": "success", "questions": questions}
+        return {"status": "success", "questions": questions, "full_text": full_text}
     except Exception as e:
         print(f"PYQ Extraction Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -163,7 +232,7 @@ async def rewrite_question(
     Generates a fresh question rewrite for a repeated question.
     """
     try:
-        rewrite = generate_rewrite(original_text, marks, topic)
+        rewrite = q_gen_agent.generate_rewrite(original_text, marks, topic)
         return {"status": "success", "rewrittenText": rewrite}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

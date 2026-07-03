@@ -49,9 +49,11 @@ export default function PaperPreviewPanel({ paper, onClose }: PaperPreviewPanelP
     }
   };
   
-  // Extract relative path from absolute DB path (e.g. D:\Campusmind2.0\backend\uploads\pyq\...)
+  // Extract relative path from absolute DB path or return absolute URL if Supabase
   const getRelativeUrl = (filePath: string) => {
     if (!filePath) return '';
+    if (filePath.startsWith('http')) return filePath;
+    
     const normalized = filePath.replace(/\\/g, '/');
     const uploadsIndex = normalized.indexOf('uploads/');
     if (uploadsIndex !== -1) {

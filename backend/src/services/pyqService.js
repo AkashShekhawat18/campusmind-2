@@ -17,17 +17,7 @@ const processQuestionPaper = async (paperId) => {
   if (!paper) throw new Error('Question paper not found');
 
   console.log(`\n=== Processing Paper: "${paper.title}" (${paperId}) ===`);
-  console.log(`File: ${paper.filePath}`);
-
-  const absolutePath = path.resolve(paper.filePath);
-  if (!fs.existsSync(absolutePath)) {
-    console.error(`File not found: ${absolutePath}`);
-    await prisma.questionPaper.update({
-      where: { id: paperId },
-      data: { isProcessed: true, extractedText: 'ERROR: File not found' }
-    });
-    return { paperId, extractedText: 'ERROR: File not found', questions: [], similarities: [] };
-  }
+  console.log(`File URL: ${paper.filePath}`);
 
   let extractedText = '';
   let storedQuestions = [];
@@ -35,9 +25,13 @@ const processQuestionPaper = async (paperId) => {
 
   try {
     // 1. Send file to Python AI Service for extraction (OCR + Extraction + Embedding)
-    console.log('Sending file to AI Microservice for extraction...');
+    console.log('Fetching file from Supabase and streaming to AI Microservice...');
+    
+    // Fetch file stream from Supabase
+    const fileStreamRes = await axios.get(paper.filePath, { responseType: 'stream' });
+    
     const formData = new FormData();
-    formData.append('file', fs.createReadStream(absolutePath));
+    formData.append('file', fileStreamRes.data, paper.originalFileName || 'document.pdf');
 
     const extractRes = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/extract`, formData, {
       headers: { ...formData.getHeaders() },
@@ -53,7 +47,7 @@ const processQuestionPaper = async (paperId) => {
 
     const extractedQuestions = aiData.questions || [];
     console.log(`AI Service extracted ${extractedQuestions.length} questions.`);
-    extractedText = `Extracted via Python AI Service (Total: ${extractedQuestions.length} questions)`;
+    extractedText = aiData.full_text || `Extracted via Python AI Service (Total: ${extractedQuestions.length} questions)`;
 
     // 2. Save extracted questions to Database
     console.log('Saving extracted questions to database...');

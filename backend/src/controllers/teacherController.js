@@ -49,10 +49,14 @@ const bulkUploadPYQ = async (req, res) => {
     const { title, year, semester, subjectId } = req.body;
     if (!title || !year || !semester) return res.status(400).json({ error: 'Title, year, and semester are required' });
 
+    const { uploadFileToSupabase } = require('../utils/supabase');
+    const uniqueFileName = `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const { url } = await uploadFileToSupabase(req.file.buffer, uniqueFileName, 'question-papers', req.file.mimetype);
+
     const paper = await prisma.questionPaper.create({
       data: {
         title, year: parseInt(year), semester: parseInt(semester),
-        filePath: req.file.path, originalFileName: req.file.originalname,
+        filePath: url, originalFileName: req.file.originalname,
         subjectId: subjectId || null, uploadedById: req.user.id,
         uploadType: 'HISTORICAL'
       }
@@ -73,10 +77,14 @@ const analyzeCurrentPaper = async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const { title, year, semester, subjectId } = req.body;
     
+    const { uploadFileToSupabase } = require('../utils/supabase');
+    const uniqueFileName = `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const { url } = await uploadFileToSupabase(req.file.buffer, uniqueFileName, 'question-papers', req.file.mimetype);
+
     const paper = await prisma.questionPaper.create({
       data: {
         title: title || 'Current Analysis', year: parseInt(year) || new Date().getFullYear(), 
-        semester: parseInt(semester) || 1, filePath: req.file.path, 
+        semester: parseInt(semester) || 1, filePath: url, 
         originalFileName: req.file.originalname, subjectId: subjectId || null, 
         uploadedById: req.user.id, uploadType: 'CURRENT_ANALYSIS'
       }
@@ -254,17 +262,34 @@ const questionPaperChat = async (req, res) => {
     }
 
     // Format the questions into a clean text block for the AI to understand
-    const paperContext = paper.extractedQuestions.map((q, i) => {
+    let paperContext = paper.extractedQuestions.map((q, i) => {
       let qText = `Question ${q.questionNumber || (i + 1)}: ${q.questionText}`;
       if (q.marks) qText += ` [${q.marks} Marks]`;
       if (q.topic) qText += ` (Topic: ${q.topic})`;
       return qText;
     }).join('\n\n');
+    
+    if (paper.extractedText) {
+      paperContext += `\n\n--- Full Document Text for Reference (May include solutions/answers) ---\n\n${paper.extractedText}`;
+    }
 
-    const { analyzeQuestionPaper } = require('../services/ai.service');
-    const reply = await analyzeQuestionPaper(paperContext, message, history || []);
+    // Send to Python Multi-Agent RAG Orchestrator
+    const axios = require('axios');
+    const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    
+    // We send the message and user ID so the RetrievalAgent can query the user's specific ChromaDB collection
+    const formData = new URLSearchParams();
+    formData.append('message', `Context:\n${paperContext}\n\nQuery: ${message}`);
+    formData.append('user_id', req.user.id);
+    formData.append('history', JSON.stringify(history || []));
 
-    res.json({ reply });
+    const response = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/chat`, formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const { reply, confidence, references } = response.data;
+
+    res.json({ reply, confidence, references });
   } catch (error) {
     console.error('QP chat error:', error);
     res.status(500).json({ error: 'Failed to process question' });
@@ -284,12 +309,16 @@ const uploadResource = async (req, res) => {
       return res.status(400).json({ error: 'Title, department, semester, and subject are required' });
     }
 
+    const { uploadFileToSupabase } = require('../utils/supabase');
+    const uniqueFileName = `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const { url } = await uploadFileToSupabase(req.file.buffer, uniqueFileName, 'resources', req.file.mimetype);
+
     const resource = await prisma.resource.create({
       data: {
         title,
         description: description || null,
         fileType: getFileTypeCategory(req.file.mimetype),
-        filePath: req.file.path,
+        filePath: url,
         originalFileName: req.file.originalname,
         fileSize: req.file.size,
         department,

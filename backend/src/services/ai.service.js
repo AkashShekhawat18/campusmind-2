@@ -134,6 +134,10 @@ const generateModelAnswer = async (question, format = 'DETAILED') => {
 FORMAT CONSTRAINT:
 - ${formatInstruction}
 
+CRITICAL ANTI-HALLUCINATION RULE: 
+- Base your answer primarily on the concepts provided in the question.
+- If you are unsure of the answer, or if the question involves highly advanced topics (like quantum computing or advanced calculus) and you do not have the intended solution, you must explicitly add a disclaimer stating that this is an AI-generated attempt and might contain inaccuracies. DO NOT confidently state an incorrect answer.
+
 Output ONLY the answer text, without conversational filler. Use Markdown formatting for readability.
 VERY IMPORTANT: Use standard LaTeX notation with $ (inline) and $$ (display) for ANY mathematical formulas, equations, or logic gates. Do NOT use raw text or unicode for math.`;
 
@@ -161,6 +165,7 @@ YOUR RESTRICTIONS:
 - You must ONLY answer questions related to the uploaded question paper
 - If the user asks something unrelated to the paper, politely decline and redirect them
 - Always reference specific questions from the paper when relevant
+- CRITICAL ANTI-HALLUCINATION RULE: If you are asked to provide a solution, first check if the solution is present in the "Full Document Text". If it is NOT present, you must explicitly state: "The intended solution is not provided in this document." You may then provide your own AI-generated attempt, but you MUST strongly warn the student that it is an AI generation and could be incorrect. Do NOT confidently fabricate an answer.
 - VERY IMPORTANT: Use standard LaTeX notation with $ (inline) and $$ (display) for ANY mathematical formulas, matrices, integrals, limits, etc. Do NOT use raw text or unicode for math.
 
 QUESTION PAPER CONTENT:

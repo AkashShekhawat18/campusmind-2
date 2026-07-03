@@ -12,39 +12,23 @@ uploadDirs.forEach(dir => {
 });
 
 // PYQ upload config (PDFs only)
-const pyqStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads/pyq'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const pyqStorage = multer.memoryStorage();
 
 const pyqUpload = multer({
   storage: pyqStorage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF and image files are allowed for question papers'), false);
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === '.pdf') {
+      return cb(null, true);
     }
+    cb(new Error('Only PDF files are allowed for Question Papers'));
   }
 });
 
-// Resource upload config (PDF, DOCX, PPT, Images)
-const resourceStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads/resources'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// ─── General Resource Upload Config ──────────────────────────────
+
+const resourceStorage = multer.memoryStorage();
 
 const allowedResourceTypes = [
   'application/pdf',
