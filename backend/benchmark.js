@@ -27,9 +27,11 @@ async function runBenchmarks() {
   let teacherUser = await prisma.user.findFirst({ where: { role: 'TEACHER' } });
   if (!teacherUser) {
     teacherUser = await prisma.user.create({ data: { name: 'T1', email: 't1@b.com', role: 'TEACHER', officialId: 'T1', passwordHash: 'hash', status: 'ACTIVE' } });
-    await prisma.teacherProfile.create({ data: { userId: teacherUser.id, department: 'Bench Dept' } });
   }
-  let teacherProf = await prisma.teacherProfile.findFirst();
+  let teacherProf = await prisma.teacherProfile.findFirst({ where: { userId: teacherUser.id } });
+  if (!teacherProf) {
+    teacherProf = await prisma.teacherProfile.create({ data: { userId: teacherUser.id, departmentId: dept.id } });
+  }
 
   let ca = await prisma.courseAssignment.findFirst();
   if (!ca) {

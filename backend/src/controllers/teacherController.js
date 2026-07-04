@@ -2,6 +2,7 @@ const prisma = require('../utils/prisma');
 const { processQuestionPaper } = require('../services/pyqService');
 const { generateQuestionRewrite, analyzeQuestionPaper, generateResponse } = require('../services/ai.service');
 const { getFileTypeCategory } = require('../services/resourceService');
+const { uploadFileToSupabase, deleteFileFromSupabase } = require('../utils/supabaseStorage');
 const path = require('path');
 const fs = require('fs');
 
@@ -44,24 +45,61 @@ const getDashboard = async (req, res) => {
 
 // ─── Bulk Upload PYQ (Historical) ──────────────────────────────────────────────────
 const bulkUploadPYQ = async (req, res) => {
+  let supabaseUrl = null;
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const { title, year, semester, subjectId } = req.body;
-    if (!title || !year || !semester) return res.status(400).json({ error: 'Title, year, and semester are required' });
+    if (!title || !year || !semester) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Title, year, and semester are required' });
+    }
+
+    const crypto = require('crypto');
+    const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.\-]/g, '_');
+    const storagePath = `${crypto.randomUUID()}-${sanitizedName}`;
+    supabaseUrl = await uploadFileToSupabase(req.file.path, req.file.originalname, 'question-papers', storagePath, req.file.mimetype);
 
     const paper = await prisma.questionPaper.create({
       data: {
         title, year: parseInt(year), semester: parseInt(semester),
-        filePath: req.file.path, originalFileName: req.file.originalname,
+        filePath: supabaseUrl, originalFileName: req.file.originalname,
         subjectId: subjectId || null, uploadedById: req.user.id,
         uploadType: 'HISTORICAL'
       }
     });
 
+    const axios = require('axios');
+    const FormData = require('form-data');
+    const formData = new FormData();
+    formData.append('files', fs.createReadStream(req.file.path), req.file.originalname);
+    formData.append('user_id', 'official_pyqs');
+    axios.post(`http://127.0.0.1:8000/api/ai/upload`, formData, { headers: formData.getHeaders() }).catch(console.error);
+
+    await prisma.uploadedFile.create({
+      data: {
+        ownerId: req.user.id,
+        ownerType: 'USER',
+        bucket: 'question-papers',
+        storagePath: storagePath,
+        filename: req.file.originalname,
+        originalFilename: req.file.originalname,
+        mimeType: req.file.mimetype,
+        fileSize: req.file.size,
+        category: 'PYQ',
+        visibility: 'OFFICIAL',
+        source: 'PYQ',
+        uploadedBy: req.user.id
+      }
+    });
+
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
     processQuestionPaper(paper.id).catch(err => console.error('Bulk PYQ processing error:', err));
 
     res.status(201).json({ message: 'Historical paper added to database. Processing started.', paper });
   } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (supabaseUrl) await deleteFileFromSupabase(supabaseUrl).catch(console.error);
     console.error('Bulk Upload PYQ error:', error);
     res.status(500).json({ error: 'Failed to upload historical question paper' });
   }
@@ -69,23 +107,57 @@ const bulkUploadPYQ = async (req, res) => {
 
 // ─── Analyze Current Paper ──────────────────────────────────────────────────────
 const analyzeCurrentPaper = async (req, res) => {
+  let supabaseUrl = null;
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const { title, year, semester, subjectId } = req.body;
     
+    const crypto = require('crypto');
+    const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.\-]/g, '_');
+    const storagePath = `${crypto.randomUUID()}-${sanitizedName}`;
+    supabaseUrl = await uploadFileToSupabase(req.file.path, req.file.originalname, 'question-papers', storagePath, req.file.mimetype);
+
     const paper = await prisma.questionPaper.create({
       data: {
         title: title || 'Current Analysis', year: parseInt(year) || new Date().getFullYear(), 
-        semester: parseInt(semester) || 1, filePath: req.file.path, 
+        semester: parseInt(semester) || 1, filePath: supabaseUrl, 
         originalFileName: req.file.originalname, subjectId: subjectId || null, 
         uploadedById: req.user.id, uploadType: 'CURRENT_ANALYSIS'
       }
     });
 
+    const axios = require('axios');
+    const FormData = require('form-data');
+    const formData = new FormData();
+    formData.append('files', fs.createReadStream(req.file.path), req.file.originalname);
+    formData.append('user_id', 'official_pyqs');
+    axios.post(`http://127.0.0.1:8000/api/ai/upload`, formData, { headers: formData.getHeaders() }).catch(console.error);
+
+    await prisma.uploadedFile.create({
+      data: {
+        ownerId: req.user.id,
+        ownerType: 'USER',
+        bucket: 'question-papers',
+        storagePath: storagePath,
+        filename: req.file.originalname,
+        originalFilename: req.file.originalname,
+        mimeType: req.file.mimetype,
+        fileSize: req.file.size,
+        category: 'PYQ',
+        visibility: 'OFFICIAL',
+        source: 'PYQ',
+        uploadedBy: req.user.id
+      }
+    });
+
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
     processQuestionPaper(paper.id).catch(err => console.error('Current PYQ processing error:', err));
 
     res.status(201).json({ message: 'Current paper uploaded for analysis. Analytics generation started.', paper });
   } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (supabaseUrl) await deleteFileFromSupabase(supabaseUrl).catch(console.error);
     console.error('Analyze Current Paper error:', error);
     res.status(500).json({ error: 'Failed to upload current question paper' });
   }
@@ -167,7 +239,9 @@ const deleteQuestionPaper = async (req, res) => {
       return res.status(403).json({ error: 'You can only delete your own papers' });
     }
 
-    if (fs.existsSync(paper.filePath)) {
+    if (paper.filePath && paper.filePath.startsWith('http')) {
+      await deleteFileFromSupabase(paper.filePath);
+    } else if (paper.filePath && fs.existsSync(paper.filePath)) {
       fs.unlinkSync(paper.filePath);
     }
 
@@ -280,6 +354,7 @@ const questionPaperChat = async (req, res) => {
 
 // ─── Resources: Upload ───────────────────────────────────────────
 const uploadResource = async (req, res) => {
+  let supabaseUrl = null;
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -288,15 +363,22 @@ const uploadResource = async (req, res) => {
     const { title, description, department, semester, subjectName } = req.body;
 
     if (!title || !department || !semester || !subjectName) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'Title, department, semester, and subject are required' });
     }
 
+    const crypto = require('crypto');
+    const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.\-]/g, '_');
+    const storagePath = `${crypto.randomUUID()}-${sanitizedName}`;
+    supabaseUrl = await uploadFileToSupabase(req.file.path, req.file.originalname, 'resources', storagePath, req.file.mimetype);
+
+    const fileTypeCat = getFileTypeCategory(req.file.mimetype);
     const resource = await prisma.resource.create({
       data: {
         title,
         description: description || null,
-        fileType: getFileTypeCategory(req.file.mimetype),
-        filePath: req.file.path,
+        fileType: fileTypeCat,
+        filePath: supabaseUrl,
         originalFileName: req.file.originalname,
         fileSize: req.file.size,
         department,
@@ -305,6 +387,32 @@ const uploadResource = async (req, res) => {
         uploadedById: req.user.id
       }
     });
+
+    await prisma.uploadedFile.create({
+      data: {
+        ownerId: req.user.id,
+        ownerType: 'USER',
+        bucket: 'resources',
+        storagePath: storagePath,
+        filename: req.file.originalname,
+        originalFilename: req.file.originalname,
+        mimeType: req.file.mimetype,
+        fileSize: req.file.size,
+        category: fileTypeCat,
+        visibility: 'OFFICIAL',
+        source: 'RESOURCE',
+        uploadedBy: req.user.id
+      }
+    });
+
+    const axios = require('axios');
+    const FormData = require('form-data');
+    const formData = new FormData();
+    formData.append('files', fs.createReadStream(req.file.path), req.file.originalname);
+    formData.append('user_id', 'official_resources');
+    axios.post(`http://127.0.0.1:8000/api/ai/upload`, formData, { headers: formData.getHeaders() }).catch(console.error);
+
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
     await prisma.auditLog.create({
       data: {
@@ -318,6 +426,8 @@ const uploadResource = async (req, res) => {
 
     res.status(201).json(resource);
   } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (supabaseUrl) await deleteFileFromSupabase(supabaseUrl).catch(console.error);
     console.error('Upload resource error:', error);
     res.status(500).json({ error: 'Failed to upload resource' });
   }
@@ -378,8 +488,9 @@ const deleteResource = async (req, res) => {
       return res.status(403).json({ error: 'You can only delete your own resources' });
     }
 
-    // Delete file from disk
-    if (fs.existsSync(resource.filePath)) {
+    if (resource.filePath && resource.filePath.startsWith('http')) {
+      await deleteFileFromSupabase(resource.filePath);
+    } else if (resource.filePath && fs.existsSync(resource.filePath)) {
       fs.unlinkSync(resource.filePath);
     }
 

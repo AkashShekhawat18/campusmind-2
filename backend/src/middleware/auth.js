@@ -34,8 +34,11 @@ const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error(error);
-    res.status(401).json({ error: 'Not authorized, token failed' });
+    console.error('[Auth Middleware Error]:', error.message || error);
+    if (error.code === 'P2022') {
+      console.error('[Critical DB Error]: Database schema is out of sync with Prisma client. Please run `npx prisma db push`.');
+    }
+    res.status(401).json({ error: 'Not authorized, token failed or database error' });
   }
 };
 

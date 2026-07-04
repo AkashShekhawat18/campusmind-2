@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure upload directories exist
-const uploadDirs = ['uploads/pyq', 'uploads/resources'];
+const uploadDirs = ['uploads/temp'];
 uploadDirs.forEach(dir => {
   const fullPath = path.join(process.cwd(), dir);
   if (!fs.existsSync(fullPath)) {
@@ -14,11 +14,11 @@ uploadDirs.forEach(dir => {
 // PYQ upload config (PDFs only)
 const pyqStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads/pyq'));
+    cb(null, path.join(process.cwd(), 'uploads/temp'));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    cb(null, 'temp-pyq-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -38,11 +38,11 @@ const pyqUpload = multer({
 // Resource upload config (PDF, DOCX, PPT, Images)
 const resourceStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads/resources'));
+    cb(null, path.join(process.cwd(), 'uploads/temp'));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    cb(null, 'temp-res-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 

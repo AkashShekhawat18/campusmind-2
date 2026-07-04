@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Bucket Creation",
+    "status": "FAIL",
+    "reason": "Failed to create bucket. Exact Reason: new row violates row-level security policy (Status: 400)"
+  },
+  {
+    "name": "Teacher Login",
+    "status": "FAIL",
+    "reason": "Request failed with status code 400"
+  },
+  {
+    "name": "Student Login",
+    "status": "FAIL",
+    "reason": "Request failed with status code 400"
+  },
+  {
+    "name": "Admin Login",
+    "status": "FAIL",
+    "reason": "Request failed with status code 400"
+  },
+  {
+    "name": "File Retrieval",
+    "status": "FAIL",
+    "reason": "Skipped due to previous failures"
+  },
+  {
+    "name": "AI Processing",
+    "status": "FAIL",
+    "reason": "Skipped due to previous failures"
+  }
+]

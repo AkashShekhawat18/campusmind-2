@@ -19,8 +19,10 @@ const processQuestionPaper = async (paperId) => {
   console.log(`\n=== Processing Paper: "${paper.title}" (${paperId}) ===`);
   console.log(`File: ${paper.filePath}`);
 
-  const absolutePath = path.resolve(paper.filePath);
-  if (!fs.existsSync(absolutePath)) {
+  const isRemoteFile = paper.filePath && paper.filePath.startsWith('http');
+  const absolutePath = isRemoteFile ? paper.filePath : path.resolve(paper.filePath);
+
+  if (!isRemoteFile && !fs.existsSync(absolutePath)) {
     console.error(`File not found: ${absolutePath}`);
     await prisma.questionPaper.update({
       where: { id: paperId },
@@ -37,7 +39,13 @@ const processQuestionPaper = async (paperId) => {
     // 1. Send file to Python AI Service for extraction (OCR + Extraction + Embedding)
     console.log('Sending file to AI Microservice for extraction...');
     const formData = new FormData();
-    formData.append('file', fs.createReadStream(absolutePath));
+    
+    if (isRemoteFile) {
+      const response = await axios.get(absolutePath, { responseType: 'stream' });
+      formData.append('file', response.data, paper.originalFileName);
+    } else {
+      formData.append('file', fs.createReadStream(absolutePath));
+    }
 
     const extractRes = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/extract`, formData, {
       headers: { ...formData.getHeaders() },
