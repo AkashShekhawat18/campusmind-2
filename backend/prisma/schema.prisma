@@ -41,6 +41,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   sessions            Session[]
   pyqPapers           PYQPaper[]
+  events              Event[]
 
   studentProfile StudentProfile?
   teacherProfile TeacherProfile?
@@ -460,12 +461,17 @@ model AuditLog {
 model Event {
   id          String   @id @default(uuid())
   title       String
-  description String
-  date        DateTime
+  subject     String?
+  dateStr     String   // YYYY-MM-DD
+  time        String?
+  type        String   // Class, Quiz, etc.
   location    String?
-  type        String
+  description String?
+  assignToAll Boolean  @default(false)
+  userId      String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Announcement {

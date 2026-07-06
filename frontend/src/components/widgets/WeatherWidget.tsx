@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { 
@@ -66,7 +66,16 @@ const WeatherWidgetBase = () => {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  const loadWeather = useCallback(async () => {
+  useEffect(() => {
+    setMounted(true);
+    loadWeather();
+    
+    // Auto refresh every 15 mins
+    const interval = setInterval(loadWeather, CACHE_DURATION);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadWeather = async () => {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
@@ -125,12 +134,7 @@ const WeatherWidgetBase = () => {
       setError(true);
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
-    loadWeather();
-  }, [loadWeather]);
+  };
 
   if (!mounted) return null;
   const isDark = resolvedTheme === 'dark';

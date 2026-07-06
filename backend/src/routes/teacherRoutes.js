@@ -15,6 +15,8 @@ const {
   deleteChat
 } = require('../controllers/teacherController');
 
+const { getEvents } = require('../controllers/calendarController');
+
 const router = express.Router();
 
 // All teacher routes require authentication + TEACHER role
@@ -39,3 +41,6 @@ router.put('/chat/:id', validateUUID(), renameChat);
 router.delete('/chat/:id', validateUUID(), deleteChat);
 
 module.exports = router;
+
+// Calendar Route
+router.get('/calendar/schedule', getEvents);

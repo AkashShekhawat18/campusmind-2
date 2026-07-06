@@ -8,12 +8,13 @@ import { useTheme } from 'next-themes';
 import {
   LayoutDashboard, MessageSquare, FileText, BookOpen,
   Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles, Brain
-} from 'lucide-react';
+, CalendarDays} from 'lucide-react';
 import { WeatherWidget } from '@/components/widgets/WeatherWidget';
 
 const sidebarItems = [
   { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
   { label: 'Campus GPT', href: '/teacher/dashboard/campus-gpt', icon: MessageSquare },
+  { label: 'Calendar', href: '/teacher/dashboard/calendar', icon: CalendarDays },
   { label: 'BITS Pilani Resources', href: '/teacher/dashboard/resources', icon: BookOpen },
   { label: 'PYQ Analyzer', href: '/teacher/dashboard/pyq-analyzer', icon: Brain },
   { label: 'PYQ Library', href: '/teacher/dashboard/pyq-library', icon: FileText },
@@ -53,7 +54,7 @@ export default function TeacherDashboardLayout({
   };
 
   return (
-    <div className={`flex min-h-screen w-full transition-colors duration-300 ${isDark ? 'bg-[#0a0a0c] text-[#f5f5f7]' : 'bg-[#f0f0f5] text-[#1a1a1c]'}`}>
+    <div className={`flex h-screen overflow-hidden w-full transition-colors duration-300 ${isDark ? 'bg-[#0a0a0c] text-[#f5f5f7]' : 'bg-[#f0f0f5] text-[#1a1a1c]'}`}>
       {/* SIDEBAR */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -62,7 +63,7 @@ export default function TeacherDashboardLayout({
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-            className={`sticky top-0 flex flex-col w-[260px] h-screen flex-shrink-0 border-r z-50 ${
+            className={`flex flex-col w-[260px] h-full flex-shrink-0 border-r z-50 ${
               isDark ? 'bg-[#111113] border-white/5' : 'bg-[#e8e8ed] border-black/5'
             }`}
           >
@@ -164,9 +165,9 @@ export default function TeacherDashboardLayout({
       </AnimatePresence>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Top Bar */}
-        <header className={`sticky top-0 z-40 h-14 flex items-center justify-between px-4 border-b flex-shrink-0 ${
+        <header className={`h-14 flex items-center justify-between px-4 border-b flex-shrink-0 ${
           isDark ? 'border-white/5 bg-[#0a0a0c]/80' : 'border-black/5 bg-[#f0f0f5]/80'
         } backdrop-blur-md`}>
           <div className="flex items-center gap-3">
@@ -192,7 +193,7 @@ export default function TeacherDashboardLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

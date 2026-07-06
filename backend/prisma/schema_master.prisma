@@ -1,0 +1,414 @@
+﻿generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String          @id @default(uuid())
+  name           String
+  email          String          @unique
+  password       String
+  role           String          @default("STUDENT") // STUDENT, TEACHER, ADMIN
+  createdAt      DateTime        @default(now())
+  chats          Chat[]
+  questionPapers QuestionPaper[]
+  resources          Resource[]
+  auditLogs          AuditLog[]
+  studentProfile     StudentProfile?
+  studentSettings    StudentSettings?
+  bookmarks          Bookmark[]
+  downloadedResources DownloadedResource[]
+  recentResources    RecentResource[]
+  studentActivities  StudentActivity[]
+  admin              Admin?
+  notifications      Notification[]
+  announcements      Announcement[]
+  loginHistories     LoginHistory[]
+  events             Event[]
+}
+
+model Chat {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  chatId         String
+  role           String   // "user" or "assistant"
+  content        String
+  fileReferences String?  // JSON string storing metadata about uploaded files for this turn
+  createdAt      DateTime @default(now())
+  chat           Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model Subject {
+  id             String          @id @default(uuid())
+  name           String
+  department     String
+  semester       Int
+  createdAt      DateTime        @default(now())
+  questionPapers QuestionPaper[]
+  resources      Resource[]
+
+  @@unique([name, department, semester])
+}
+
+model QuestionPaper {
+  id                 String              @id @default(uuid())
+  title              String
+  year               Int
+  semester           Int
+  examType           String?
+  department         String?
+  academicYear       String?
+  filePath           String
+  originalFileName   String
+  extractedText      String?
+  isProcessed        Boolean             @default(false)
+  uploadType         String              @default("HISTORICAL") // "HISTORICAL" or "CURRENT_ANALYSIS"
+  subjectId          String?
+  uploadedById       String
+  createdAt          DateTime            @default(now())
+  subject            Subject?            @relation(fields: [subjectId], references: [id])
+  uploadedBy         User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  extractedQuestions ExtractedQuestion[]
+  analytics          PaperAnalytics?
+  bookmarks          Bookmark[]
+}
+
+model ExtractedQuestion {
+  id                    String             @id @default(uuid())
+  questionText          String
+  questionNumber        String?
+  marks                 Int?
+  topic                 String?
+  section               String?
+  subParts              String?            // JSON string
+  unit                  String?
+  embedding             String?            // JSON string array of floats
+  questionPaperId       String
+  createdAt             DateTime           @default(now())
+  questionPaper         QuestionPaper      @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+  similarityAsSource    SimilarityResult[] @relation("SourceQuestion")
+  similarityAsMatch     SimilarityResult[] @relation("MatchedQuestion")
+  rewrites              QuestionRewrite[]
+  modelAnswers          ModelAnswer[]
+  topics                QuestionTopic[]    @relation("QuestionToTopic")
+  questionImages        QuestionImage[]
+  questionTables        QuestionTable[]
+  questionEquations     QuestionEquation[]
+  questionDiagrams      QuestionDiagram[]
+}
+
+model QuestionRewrite {
+  id                  String             @id @default(uuid())
+  extractedQuestionId String
+  originalText        String
+  rewrittenText       String
+  createdAt           DateTime           @default(now())
+  extractedQuestion   ExtractedQuestion  @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model ModelAnswer {
+  id                  String             @id @default(uuid())
+  extractedQuestionId String
+  answerType          String             // "DETAILED", "SHORT", "BULLETED", "STEP_BY_STEP"
+  content             String
+  createdAt           DateTime           @default(now())
+  extractedQuestion   ExtractedQuestion  @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionTopic {
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  extractedQuestions ExtractedQuestion[] @relation("QuestionToTopic")
+}
+
+model SimilarityResult {
+  id                  String            @id @default(uuid())
+  sourceQuestionId    String
+  matchedQuestionId   String
+  similarityScore     Float
+  matchType           String            // "EXACT" or "SEMANTIC"
+  matchedYear         Int?
+  matchedPaperTitle   String?
+  matchedSubject      String?
+  matchedSemester     Int?
+  createdAt           DateTime          @default(now())
+  sourceQuestion      ExtractedQuestion @relation("SourceQuestion", fields: [sourceQuestionId], references: [id], onDelete: Cascade)
+  matchedQuestion     ExtractedQuestion @relation("MatchedQuestion", fields: [matchedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model Resource {
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
+  fileType         String   // "PDF", "DOCX", "PPT", "IMAGE", "NOTES"
+  filePath         String
+  originalFileName String
+  fileSize         Int
+  department       String
+  semester         Int
+  subjectName      String
+  subjectId        String?
+  uploadedById     String
+  createdAt        DateTime @default(now())
+  subject          Subject? @relation(fields: [subjectId], references: [id])
+  uploadedBy       User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  bookmarks          Bookmark[]
+  downloadedBy       DownloadedResource[]
+  recentViews        RecentResource[]
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // "UPLOAD_PYQ", "DELETE_RESOURCE", "LOGIN", etc.
+  entityType String?  // "QuestionPaper", "Resource", etc.
+  entityId   String?
+  details    String?
+  userId     String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QuestionImage {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  imageUrl            String            
+  description         String?
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionTable {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  tableData           String            // JSON string of rows/columns
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionEquation {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  latex               String
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionDiagram {
+  id                  String            @id @default(uuid())
+  extractedQuestionId String
+  diagramUrl          String
+  description         String?
+  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
+}
+
+model PaperAnalytics {
+  id                  String            @id @default(uuid())
+  questionPaperId     String            @unique
+  overallSimilarity   Float
+  repeatedCount       Int
+  uniqueCount         Int
+  totalQuestions      Int
+  topicDistribution   String            // JSON string
+  yearDistribution    String            // JSON string
+  createdAt           DateTime          @default(now())
+  questionPaper       QuestionPaper     @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+}
+
+// ΓöÇΓöÇΓöÇ Phase 2: Student Portal Models ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+model StudentProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  department     String?
+  semester       Int?
+  course         String?
+  profilePicture String?
+  bio            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Bookmark {
+  id              String         @id @default(uuid())
+  userId          String
+  resourceId      String?
+  questionPaperId String?
+  createdAt       DateTime       @default(now())
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource        Resource?      @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  questionPaper   QuestionPaper? @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
+}
+
+model DownloadedResource {
+  id         String   @id @default(uuid())
+  userId     String
+  resourceId String
+  downloadedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model StudentSettings {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  theme          String   @default("system")
+  notifications  Boolean  @default(true)
+  language       String   @default("en")
+  aiPreferences  String?  // JSON string
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RecentResource {
+  id         String   @id @default(uuid())
+  userId     String
+  resourceId String
+  viewedAt   DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model StudentActivity {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String   // e.g. "VIEW_RESOURCE", "CHAT_STARTED", "DOWNLOADED_PYQ"
+  details    String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ΓöÇΓöÇΓöÇ Phase 3: Admin Portal Models ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+model Admin {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  roleId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           Role     @relation(fields: [roleId], references: [id])
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique // SUPER_ADMIN, MODERATOR, etc.
+  description String?
+  admins      Admin[]
+  permissions Permission[] @relation("RolePermissions")
+}
+
+model Permission {
+  id          String       @id @default(uuid())
+  name        String       @unique // e.g. "DELETE_USER", "MANAGE_ROLES"
+  description String?
+  roles       Role[]       @relation("RolePermissions")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   // ANNOUNCEMENT, ALERT, REMINDER
+  target    String   // ALL, STUDENTS, TEACHERS, INDIVIDUAL
+  userId    String?  // If target is INDIVIDUAL
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  subject     String?
+  dateStr     String   // YYYY-MM-DD
+  time        String?
+  type        String   // Class, Quiz, etc.
+  location    String?
+  description String?
+  assignToAll Boolean  @default(false)
+  userId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  authorId    String
+  createdAt   DateTime @default(now())
+  author      User     @relation(fields: [authorId], references: [id])
+}
+
+model SystemSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  status    String   // SUCCESS, FAILED
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Approval {
+  id           String   @id @default(uuid())
+  entityType   String   // STUDENT, TEACHER, COLLEGE
+  entityId     String
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  requestedBy  String
+  reviewedBy   String?
+  reviewNotes  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  collegeId String
+  createdAt DateTime @default(now())
+  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  branches  Branch[]
+}
+
+model Branch {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+  createdAt    DateTime   @default(now())
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+}
+
+model College {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  location    String?
+  createdAt   DateTime     @default(now())
+  departments Department[]
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  year      String   @unique // e.g. "2026-2027"
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
