@@ -15,3 +15,4 @@ numpy
 requests
 sse-starlette
 python-multipart
+reportlab

@@ -55,7 +55,7 @@ export default function StudentDashboard() {
 
   const quickActions = [
     { label: 'Chat with Campus GPT', icon: Sparkles, href: '/student/dashboard/campus-gpt', desc: 'Get instant study help' },
-    { label: 'Browse Resources', icon: BookOpen, href: '/student/dashboard/resources', desc: 'Find notes & PYQs' },
+    { label: 'Browse Resources', icon: BookOpen, href: '/student/dashboard/resources', desc: 'Find study materials' },
   ];
 
   const containerVariants = {

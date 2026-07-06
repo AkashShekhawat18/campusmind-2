@@ -1,6 +1,7 @@
 const express = require('express');
 const { protect } = require('../middleware/auth');
 const { requireRole } = require('../middleware/roleAuth');
+const { validateUUID } = require('../middleware/validation');
 const {
   getDashboard,
   getProfile,
@@ -36,9 +37,9 @@ router.put('/settings', updateSettings);
 
 // Resources
 router.get('/resources', listResources);
-router.post('/resources/:id/bookmark', bookmarkResource);
-router.delete('/resources/:id/bookmark', unbookmarkResource);
-router.post('/resources/:id/download', downloadResource);
+router.post('/resources/:id/bookmark', validateUUID(), bookmarkResource);
+router.delete('/resources/:id/bookmark', validateUUID(), unbookmarkResource);
+router.post('/resources/:id/download', validateUUID(), downloadResource);
 
 // Bookmarks
 router.get('/bookmarks', getBookmarks);
@@ -47,7 +48,7 @@ router.get('/bookmarks', getBookmarks);
 router.post('/chat', studentChat);
 router.post('/chat/save', require('../controllers/teacherController').saveStreamedChat); // Shared logic
 router.get('/chat/history', getStudentChats);
-router.put('/chat/:id', renameChat);
-router.delete('/chat/:id', deleteChat);
+router.put('/chat/:id', validateUUID(), renameChat);
+router.delete('/chat/:id', validateUUID(), deleteChat);
 
 module.exports = router;

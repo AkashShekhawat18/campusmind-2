@@ -6,22 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Create demo teacher account
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash('teacher123', salt);
-
-  const teacher = await prisma.user.upsert({
-    where: { email: 'teacher@campusmind.ai' },
-    update: {},
-    create: {
-      name: 'Demo Teacher',
-      email: 'teacher@campusmind.ai',
-      password: hashedPassword,
-      role: 'TEACHER'
-    }
-  });
-
-  console.log(`✅ Demo teacher created: ${teacher.email} (ID: ${teacher.id})`);
+  // User seeding removed because Supabase Auth requires real user registration.
 
   // Create some default subjects
   const subjects = [

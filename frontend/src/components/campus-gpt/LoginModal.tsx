@@ -16,8 +16,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, isDarkM
     { icon: <Sparkles size={18} className="text-blue-500" />, text: "Unlimited AI Chats" },
     { icon: <History size={18} className="text-blue-500" />, text: "Saved Chat History" },
     { icon: <Mic size={18} className="text-blue-500" />, text: "Voice Assistant (Coming Soon)" },
-    { icon: <FileText size={18} className="text-blue-500" />, text: "PDF Analysis (Coming Soon)" },
-    { icon: <CheckCircle2 size={18} className="text-blue-500" />, text: "PYQ Question Solver" }
+    { icon: <FileText size={18} className="text-blue-500" />, text: "PDF Analysis (Coming Soon)" }
   ];
 
   return (

@@ -333,7 +333,7 @@ export default function TeacherCampusGPT() {
   const filteredChats = chats.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className={`flex h-full overflow-hidden ${isDark ? 'bg-[#0a0a0c]' : 'bg-[#f0f0f5]'}`} {...getRootProps()}>
+    <div className={`flex h-[calc(100vh-3.5rem)] overflow-hidden ${isDark ? 'bg-[#0a0a0c]' : 'bg-[#f0f0f5]'}`} {...getRootProps()}>
       <input {...getInputProps()} />
       {/* Drag Overlay */}
       <AnimatePresence>
@@ -388,7 +388,7 @@ export default function TeacherCampusGPT() {
         </div>
 
         {/* Chat List */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-1">
+        <div className="flex-1 overflow-y-auto px-3 space-y-1" data-lenis-prevent>
           <div className="text-[10px] font-semibold uppercase tracking-wider opacity-30 px-2 mb-2">
             Chat History
           </div>
@@ -437,7 +437,7 @@ export default function TeacherCampusGPT() {
       {/* Main Chat */}
       <div className="flex-1 flex flex-col h-full relative z-10">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-12 lg:px-20 py-8">
+        <div className="flex-1 overflow-y-auto px-4 md:px-12 lg:px-20 py-8" data-lenis-prevent>
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center opacity-60">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-6 shadow-xl shadow-blue-500/20">

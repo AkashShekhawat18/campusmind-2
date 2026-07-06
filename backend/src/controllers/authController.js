@@ -1,7 +1,7 @@
 const supabase = require('../utils/supabase');
 const prisma = require('../utils/prisma');
 
-const registerUser = async (req, res) => {
+const registerUser = async (req, res, next) => {
   const { name, email, password, role, college, branch, officialId } = req.body;
 
   try {
@@ -26,45 +26,55 @@ const registerUser = async (req, res) => {
     }
 
     const userRole = role || 'STUDENT';
-    const user = await prisma.user.create({
-      data: {
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            id: supabaseUserId,
+            name,
+            email,
+            officialId,
+            password: 'SUPABASE_MANAGED', // Password handled by Supabase
+            role: userRole,
+            status: userRole === 'ADMIN' ? 'ACTIVE' : 'PENDING'
+          }
+        });
+
+        // Enforce Approval Workflow for non-admins
+        if (userRole !== 'ADMIN') {
+          await tx.approval.create({
+            data: {
+              entityType: userRole,
+              entityId: user.id,
+              status: 'PENDING',
+              requestedBy: user.id,
+              metadata: JSON.stringify({ college, branch })
+            }
+          });
+        }
+      });
+
+      res.status(201).json({
+        message: 'Your registration request has been submitted successfully and is awaiting administrator approval.',
         id: supabaseUserId,
         name,
         email,
-        officialId,
-        password: 'SUPABASE_MANAGED', // Password handled by Supabase
-        role: userRole,
-        status: userRole === 'ADMIN' ? 'ACTIVE' : 'PENDING'
-      }
-    });
-
-    // Enforce Approval Workflow for non-admins
-    if (userRole !== 'ADMIN') {
-      await prisma.approval.create({
-        data: {
-          entityType: userRole,
-          entityId: user.id,
-          status: 'PENDING',
-          requestedBy: user.id,
-          metadata: JSON.stringify({ college, branch })
-        }
+        role: userRole
       });
+    } catch (dbError) {
+      // Rollback Supabase Auth user if Prisma transaction fails
+      console.error('Database transaction failed, rolling back Supabase user:', dbError);
+      await supabase.auth.admin.deleteUser(supabaseUserId);
+      throw dbError; // Pass to the next(error) handler
     }
 
-    res.status(201).json({
-      message: 'Your registration request has been submitted successfully and is awaiting administrator approval.',
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    next(error);
   }
 };
 
-const loginUser = async (req, res) => {
+const loginUser = async (req, res, next) => {
   const { email, password } = req.body; // email field could be email or officialId, but Supabase requires email
 
   try {
@@ -124,24 +134,24 @@ const loginUser = async (req, res) => {
       token: authData.session.access_token // Return Supabase JWT token
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    next(error);
   }
 };
 
-const changePasswordFirstLogin = async (req, res) => {
+const changePasswordFirstLogin = async (req, res, next) => {
     return res.status(400).json({ error: 'Not implemented for Supabase yet' });
 };
 
-const getMe = async (req, res) => {
+const getMe = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: { id: true, name: true, email: true, role: true }
     });
+    if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    next(error);
   }
 };
 

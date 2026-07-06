@@ -62,7 +62,12 @@ export function useSafeZones() {
         }
       });
 
-      setSafeZones(zones);
+      setSafeZones(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(zones)) {
+          return prev;
+        }
+        return zones;
+      });
     };
 
     // Initial check

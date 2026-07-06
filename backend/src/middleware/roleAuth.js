@@ -16,8 +16,7 @@ const requireRole = (...roles) => {
       req.user.role = user.role;
       next();
     }).catch(err => {
-      console.error('Role check error:', err);
-      res.status(500).json({ error: 'Server error during authorization' });
+      next(err);
     });
   };
 };

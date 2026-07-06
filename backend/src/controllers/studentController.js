@@ -2,7 +2,7 @@ const prisma = require('../utils/prisma');
 const { generateResponse } = require('../services/ai.service');
 
 // ─── Dashboard ───────────────────────────────────────────────────
-const getDashboard = async (req, res) => {
+const getDashboard = async (req, res, next) => {
   try {
     const userId = req.user.id;
     
@@ -31,13 +31,12 @@ const getDashboard = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Student dashboard error:', error);
-    res.status(500).json({ error: 'Failed to load dashboard' });
+    next(error);
   }
 };
 
 // ─── Profile ─────────────────────────────────────────────────────
-const getProfile = async (req, res) => {
+const getProfile = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
@@ -45,11 +44,11 @@ const getProfile = async (req, res) => {
     });
     res.json(user);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get profile' });
+    next(error);
   }
 };
 
-const updateProfile = async (req, res) => {
+const updateProfile = async (req, res, next) => {
   try {
     const { department, semester, course, bio } = req.body;
     
@@ -68,12 +67,12 @@ const updateProfile = async (req, res) => {
     
     res.json(profile);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update profile' });
+    next(error);
   }
 };
 
 // ─── Settings ────────────────────────────────────────────────────
-const getSettings = async (req, res) => {
+const getSettings = async (req, res, next) => {
   try {
     let settings = await prisma.studentSettings.findUnique({ where: { userId: req.user.id } });
     if (!settings) {
@@ -81,11 +80,11 @@ const getSettings = async (req, res) => {
     }
     res.json(settings);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get settings' });
+    next(error);
   }
 };
 
-const updateSettings = async (req, res) => {
+const updateSettings = async (req, res, next) => {
   try {
     const { theme, notifications, language } = req.body;
     const settings = await prisma.studentSettings.update({
@@ -94,12 +93,12 @@ const updateSettings = async (req, res) => {
     });
     res.json(settings);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update settings' });
+    next(error);
   }
 };
 
 // ─── Resources ───────────────────────────────────────────────────
-const listResources = async (req, res) => {
+const listResources = async (req, res, next) => {
   try {
     let limit = parseInt(req.query.limit) || 50;
     if (limit > 200) limit = 200;
@@ -124,11 +123,11 @@ const listResources = async (req, res) => {
     
     res.json(formatted);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to list resources' });
+    next(error);
   }
 };
 
-const bookmarkResource = async (req, res) => {
+const bookmarkResource = async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.bookmark.create({
@@ -136,11 +135,11 @@ const bookmarkResource = async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to bookmark' });
+    next(error);
   }
 };
 
-const unbookmarkResource = async (req, res) => {
+const unbookmarkResource = async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.bookmark.deleteMany({
@@ -148,11 +147,11 @@ const unbookmarkResource = async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to unbookmark' });
+    next(error);
   }
 };
 
-const downloadResource = async (req, res) => {
+const downloadResource = async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.downloadedResource.create({
@@ -165,11 +164,11 @@ const downloadResource = async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to record download' });
+    next(error);
   }
 };
 
-const getBookmarks = async (req, res) => {
+const getBookmarks = async (req, res, next) => {
   try {
     let limit = parseInt(req.query.limit) || 50;
     if (limit > 200) limit = 200;
@@ -184,12 +183,12 @@ const getBookmarks = async (req, res) => {
     });
     res.json(bookmarks);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get bookmarks' });
+    next(error);
   }
 };
 
 // ─── Campus GPT (Student) ────────────────────────────────────────
-const studentChat = async (req, res) => {
+const studentChat = async (req, res, next) => {
   const { message, chatId, history } = req.body;
   if (!message) return res.status(400).json({ error: 'Message is required' });
 
@@ -198,15 +197,20 @@ const studentChat = async (req, res) => {
     let currentChatId = chatId;
 
     if (!currentChatId) {
-      const newChat = await prisma.chat.create({
-        data: { userId, title: message.substring(0, 30) }
+      await prisma.$transaction(async (tx) => {
+        const newChat = await tx.chat.create({
+          data: { userId, title: message.substring(0, 30) }
+        });
+        currentChatId = newChat.id;
+        await tx.message.create({
+          data: { chatId: currentChatId, role: 'user', content: message }
+        });
       });
-      currentChatId = newChat.id;
+    } else {
+      await prisma.message.create({
+        data: { chatId: currentChatId, role: 'user', content: message }
+      });
     }
-
-    await prisma.message.create({
-      data: { chatId: currentChatId, role: 'user', content: message }
-    });
 
     const aiResponse = await generateResponse(message, 'STUDENT', history || []);
 
@@ -220,11 +224,11 @@ const studentChat = async (req, res) => {
 
     res.json({ chatId: currentChatId, reply: aiResponse });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to process chat' });
+    next(error);
   }
 };
 
-const getStudentChats = async (req, res) => {
+const getStudentChats = async (req, res, next) => {
   try {
     let limit = parseInt(req.query.limit) || 50;
     if (limit > 200) limit = 200;
@@ -240,11 +244,11 @@ const getStudentChats = async (req, res) => {
     });
     res.json(chats);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get chats' });
+    next(error);
   }
 };
 
-const renameChat = async (req, res) => {
+const renameChat = async (req, res, next) => {
   try {
     const { title } = req.body;
     const chat = await prisma.chat.updateMany({
@@ -253,18 +257,18 @@ const renameChat = async (req, res) => {
     });
     res.json(chat);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to rename chat' });
+    next(error);
   }
 };
 
-const deleteChat = async (req, res) => {
+const deleteChat = async (req, res, next) => {
   try {
     await prisma.chat.deleteMany({
       where: { id: req.params.id, userId: req.user.id }
     });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete chat' });
+    next(error);
   }
 };
 

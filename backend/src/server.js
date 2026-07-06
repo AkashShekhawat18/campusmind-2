@@ -10,6 +10,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const voiceRoutes = require('./routes/voiceRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const pyqRoutes = require('./routes/pyqRoutes');
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/erp', adminERPRoutes);
+app.use('/api/pyq', pyqRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

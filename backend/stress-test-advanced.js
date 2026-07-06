@@ -10,10 +10,14 @@ function getMedian(arr) {
 async function runAdvancedTests() {
   console.log("=== CampusMind DB Final Verification ===");
 
-  // 3. Raw WAL read-back
-  console.log("\n--- 3. RAW WAL READ-BACK ---");
-  const walResult = await prisma.$queryRawUnsafe('PRAGMA journal_mode;');
-  console.log(walResult);
+  // 3. PostgreSQL WAL Check
+  console.log("\n--- 3. POSTGRESQL WAL LEVEL ---");
+  try {
+    const walResult = await prisma.$queryRawUnsafe("SELECT current_setting('wal_level') as wal_level;");
+    console.log(walResult);
+  } catch (err) {
+    console.log("Could not read wal_level:", err.message);
+  }
 
   const userCount = await prisma.user.count();
   console.log(`\nCurrent User Count: ${userCount}`);
@@ -86,7 +90,7 @@ async function runAdvancedTests() {
                 }
               });
             } catch(e) {
-              if (e.code === 'P2024' || e.message.includes('SQLITE_BUSY')) errorCount++;
+              if (e.code === 'P2024' || e.message.includes('too many clients') || e.message.includes('timeout')) errorCount++;
               else errorCount++; // Count all errors
             }
             const t1 = performance.now();
@@ -109,7 +113,7 @@ async function runAdvancedTests() {
                 }
               });
             } catch(e) {
-              if (e.code === 'P2024' || e.message.includes('SQLITE_BUSY')) errorCount++;
+              if (e.code === 'P2024' || e.message.includes('too many clients') || e.message.includes('timeout')) errorCount++;
               else errorCount++;
             }
             const t1 = performance.now();
@@ -125,7 +129,7 @@ async function runAdvancedTests() {
 
       console.log(`Total Elapsed Time: ${(endStress - startStress).toFixed(2)}ms`);
       console.log(`Slowest single write: ${maxTime.toFixed(2)}ms`);
-      console.log(`SQLITE_BUSY / Timeout Errors: ${errorCount}`);
+      console.log(`Connection / Timeout Errors: ${errorCount}`);
   }
 
   console.log("\nTests Complete.");

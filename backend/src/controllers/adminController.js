@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const supabase = require('../utils/supabase');
 
 const logAdminAction = async (userId, action, entityType, entityId, details) => {
   try {
@@ -16,7 +17,7 @@ const logAdminAction = async (userId, action, entityType, entityId, details) => 
   }
 };
 
-const getStats = async (req, res) => {
+const getStats = async (req, res, next) => {
   try {
     const totalUsers = await prisma.user.count();
     const activeApprovals = await prisma.approval.count({ where: { status: 'PENDING' } });
@@ -32,12 +33,11 @@ const getStats = async (req, res) => {
       systemHealth
     });
   } catch (error) {
-    console.error('Error fetching admin stats:', error);
-    res.status(500).json({ error: 'Server error fetching stats' });
+    next(error);
   }
 };
 
-const getUsers = async (req, res) => {
+const getUsers = async (req, res, next) => {
   try {
     let limit = parseInt(req.query.limit) || 50;
     if (limit > 200) limit = 200; // Hard server-side cap
@@ -61,12 +61,11 @@ const getUsers = async (req, res) => {
     // but applying limit/skip ensures bounded results.
     res.json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Server error fetching users' });
+    next(error);
   }
 };
 
-const updateUser = async (req, res) => {
+const updateUser = async (req, res, next) => {
   const { id } = req.params;
   const { role, name, email } = req.body;
   try {
@@ -77,24 +76,54 @@ const updateUser = async (req, res) => {
     await logAdminAction(req.user.id, 'UPDATE_USER', 'User', id, `Updated role to ${role}`);
     res.json(user);
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ error: 'Server error updating user' });
+    next(error);
   }
 };
 
-const deleteUser = async (req, res) => {
+const deleteUser = async (req, res, next) => {
   const { id } = req.params;
   try {
+    // Delete from Supabase Auth as well
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      await supabase.auth.admin.deleteUser(id);
+    }
     await prisma.user.delete({ where: { id } });
     await logAdminAction(req.user.id, 'DELETE_USER', 'User', id, 'Deleted user account');
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error('Error deleting user:', error);
-    res.status(500).json({ error: 'Server error deleting user' });
+    next(error);
   }
 };
 
-const getApprovals = async (req, res) => {
+const updateUserPassword = async (req, res, next) => {
+  const { id } = req.params;
+  const { password } = req.body;
+  
+  try {
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(403).json({ error: 'Cannot change passwords: SUPABASE_SERVICE_ROLE_KEY is missing in backend .env' });
+    }
+
+    const { data, error } = await supabase.auth.admin.updateUserById(id, {
+      password: password
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    await logAdminAction(req.user.id, 'UPDATE_PASSWORD', 'User', id, 'Admin manually reset user password');
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getApprovals = async (req, res, next) => {
   try {
     let limit = parseInt(req.query.limit) || 50;
     if (limit > 200) limit = 200; // Hard server-side cap
@@ -118,12 +147,11 @@ const getApprovals = async (req, res) => {
 
     res.json(enrichedApprovals);
   } catch (error) {
-    console.error('Error fetching approvals:', error);
-    res.status(500).json({ error: 'Server error fetching approvals' });
+    next(error);
   }
 };
 
-const updateApproval = async (req, res) => {
+const updateApproval = async (req, res, next) => {
   const { id } = req.params;
   const { status, reviewNotes } = req.body;
   try {
@@ -138,7 +166,6 @@ const updateApproval = async (req, res) => {
           status, 
           remarks: reviewNotes, // map incoming 'reviewNotes' to 'remarks' field in DB
           reviewedBy: req.user.id,
-          reviewedAt: new Date(),
           approvedBy: status === 'APPROVED' ? req.user.id : null,
           approvedAt: status === 'APPROVED' ? new Date() : null,
           rejectedBy: status === 'REJECTED' ? req.user.id : null,
@@ -159,12 +186,11 @@ const updateApproval = async (req, res) => {
     
     res.json(updatedApproval);
   } catch (error) {
-    console.error('Error updating approval:', error);
-    res.status(500).json({ error: 'Server error updating approval' });
+    next(error);
   }
 };
 
-const suspendUser = async (req, res) => {
+const suspendUser = async (req, res, next) => {
   const { id } = req.params;
   const { status } = req.body; // expect 'ACTIVE' or 'SUSPENDED'
   try {
@@ -178,12 +204,11 @@ const suspendUser = async (req, res) => {
     await logAdminAction(req.user.id, 'SUSPEND_USER', 'User', id, `Changed status to ${status}`);
     res.json(user);
   } catch (error) {
-    console.error('Error suspending user:', error);
-    res.status(500).json({ error: 'Server error suspending user' });
+    next(error);
   }
 };
 
-const getGptHistory = async (req, res) => {
+const getGptHistory = async (req, res, next) => {
   try {
     let limit = parseInt(req.query.limit) || 50;
     if (limit > 200) limit = 200;
@@ -203,12 +228,11 @@ const getGptHistory = async (req, res) => {
     });
     res.json(chats);
   } catch (error) {
-    console.error('Error fetching GPT history:', error);
-    res.status(500).json({ error: 'Server error fetching GPT history' });
+    next(error);
   }
 };
 
-const getSettings = async (req, res) => {
+const getSettings = async (req, res, next) => {
   try {
     const settings = await prisma.systemSetting.findMany();
     // Convert array of {key, value} into an object { [key]: value }
@@ -216,12 +240,11 @@ const getSettings = async (req, res) => {
     settings.forEach(s => { settingsObj[s.key] = s.value; });
     res.json(settingsObj);
   } catch (error) {
-    console.error('Error fetching settings:', error);
-    res.status(500).json({ error: 'Server error fetching settings' });
+    next(error);
   }
 };
 
-const updateSetting = async (req, res) => {
+const updateSetting = async (req, res, next) => {
   const { key, value } = req.body;
   try {
     const setting = await prisma.systemSetting.upsert({
@@ -232,12 +255,11 @@ const updateSetting = async (req, res) => {
     await logAdminAction(req.user.id, 'UPDATE_SETTING', 'SystemSetting', key, `Changed ${key} to ${value}`);
     res.json(setting);
   } catch (error) {
-    console.error('Error updating setting:', error);
-    res.status(500).json({ error: 'Server error updating setting' });
+    next(error);
   }
 };
 
-const sendNotification = async (req, res) => {
+const sendNotification = async (req, res, next) => {
   const { title, message, type, target, userId } = req.body;
   try {
     const notification = await prisma.notification.create({
@@ -252,12 +274,11 @@ const sendNotification = async (req, res) => {
     await logAdminAction(req.user.id, 'SEND_NOTIFICATION', 'Notification', notification.id, `Sent ${target} notification`);
     res.json(notification);
   } catch (error) {
-    console.error('Error sending notification:', error);
-    res.status(500).json({ error: 'Server error sending notification' });
+    next(error);
   }
 };
 
-const getNotifications = async (req, res) => {
+const getNotifications = async (req, res, next) => {
   try {
     let limit = parseInt(req.query.limit) || 50;
     if (limit > 200) limit = 200;
@@ -271,8 +292,7 @@ const getNotifications = async (req, res) => {
     });
     res.json(notifications);
   } catch (error) {
-    console.error('Error fetching notifications:', error);
-    res.status(500).json({ error: 'Server error fetching notifications' });
+    next(error);
   }
 };
 
@@ -288,5 +308,6 @@ module.exports = {
   getSettings,
   updateSetting,
   sendNotification,
-  getNotifications
+  getNotifications,
+  updateUserPassword
 };

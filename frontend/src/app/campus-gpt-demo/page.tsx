@@ -110,7 +110,11 @@ export default function CampusGPTDemo() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    // Guest limit removed as requested
+    // Enforce guest limit
+    if (!token && guestMessageCount >= 3) {
+      setShowLoginModal(true);
+      return;
+    }
 
     const userMsg = input.trim();
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: userMsg };

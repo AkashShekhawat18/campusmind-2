@@ -61,7 +61,15 @@ export default function AdminSidebar() {
       </nav>
 
       <div className="p-4 border-t border-white/10">
-        <div className="flex items-center px-3 py-3 rounded-lg cursor-pointer text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">
+        <div 
+          onClick={() => {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminName');
+            localStorage.removeItem('adminEmail');
+            window.location.href = '/admin/login';
+          }}
+          className="flex items-center px-3 py-3 rounded-lg cursor-pointer text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all"
+        >
           <LogOut size={22} className="min-w-[22px]" />
           {!collapsed && <span className="ml-3 text-sm font-medium">Sign Out</span>}
         </div>

@@ -28,7 +28,6 @@ model User {
 
   chats               Chat[]
   aiSessions          AiSession[]
-  questionPapers      QuestionPaper[]
   resources           Resource[]
   auditLogs           AuditLog[]
   bookmarks           Bookmark[]
@@ -41,6 +40,7 @@ model User {
   loginHistories      LoginHistory[]
   passwordResetTokens PasswordResetToken[]
   sessions            Session[]
+  pyqPapers           PYQPaper[]
 
   studentProfile StudentProfile?
   teacherProfile TeacherProfile?
@@ -205,7 +205,6 @@ model Subject {
   
   semester          Semester?          @relation(fields: [semesterId], references: [id])
   branch            Branch?            @relation(fields: [branchId], references: [id])
-  questionPapers    QuestionPaper[]
   resources         Resource[]
   courseAssignments CourseAssignment[]
   enrollments       Enrollment[]
@@ -314,153 +313,17 @@ model Message {
   @@index([chatId])
 }
 
-// --- Question Paper Engine (Unchanged for compatibility) ---
-model QuestionPaper {
-  id                 String              @id @default(uuid())
-  title              String
-  year               Int
-  semester           Int
-  examType           String?
-  department         String?
-  academicYear       String?
-  filePath           String
-  originalFileName   String
-  extractedText      String?
-  isProcessed        Boolean             @default(false)
-  uploadType         String              @default("HISTORICAL")
-  subjectId          String?
-  uploadedById       String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @default(now()) @updatedAt
-  subject            Subject?            @relation(fields: [subjectId], references: [id])
-  uploadedBy         User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  extractedQuestions ExtractedQuestion[]
-  analytics          PaperAnalytics?
-  bookmarks          Bookmark[]
-}
 
-model ExtractedQuestion {
-  id                    String             @id @default(uuid())
-  questionText          String
-  questionNumber        String?
-  marks                 Int?
-  topic                 String?
-  section               String?
-  subParts              String?
-  unit                  String?
-  embedding             String?
-  questionPaperId       String
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @default(now()) @updatedAt
-  questionPaper         QuestionPaper      @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
-  similarityAsSource    SimilarityResult[] @relation("SourceQuestion")
-  similarityAsMatch     SimilarityResult[] @relation("MatchedQuestion")
-  rewrites              QuestionRewrite[]
-  modelAnswers          ModelAnswer[]
-  topics                QuestionTopic[]    @relation("QuestionToTopic")
-  questionImages        QuestionImage[]
-  questionTables        QuestionTable[]
-  questionEquations     QuestionEquation[]
-  questionDiagrams      QuestionDiagram[]
-}
-
-model QuestionRewrite {
-  id                  String            @id @default(uuid())
-  extractedQuestionId String
-  originalText        String
-  rewrittenText       String
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @default(now()) @updatedAt
-  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
-}
-
-model ModelAnswer {
-  id                  String            @id @default(uuid())
-  extractedQuestionId String
-  answerType          String
-  content             String
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @default(now()) @updatedAt
-  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
-}
-
-model QuestionTopic {
-  id                 String              @id @default(uuid())
-  name               String              @unique
-  extractedQuestions ExtractedQuestion[] @relation("QuestionToTopic")
-}
-
-model SimilarityResult {
-  id                  String            @id @default(uuid())
-  sourceQuestionId    String
-  matchedQuestionId   String
-  similarityScore     Float
-  matchType           String
-  matchedYear         Int?
-  matchedPaperTitle   String?
-  matchedSubject      String?
-  matchedSemester     Int?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @default(now()) @updatedAt
-  sourceQuestion      ExtractedQuestion @relation("SourceQuestion", fields: [sourceQuestionId], references: [id], onDelete: Cascade)
-  matchedQuestion     ExtractedQuestion @relation("MatchedQuestion", fields: [matchedQuestionId], references: [id], onDelete: Cascade)
-}
-
-model QuestionImage {
-  id                  String            @id @default(uuid())
-  extractedQuestionId String
-  imageUrl            String            
-  description         String?
-  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
-}
-
-model QuestionTable {
-  id                  String            @id @default(uuid())
-  extractedQuestionId String
-  tableData           String            
-  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
-}
-
-model QuestionEquation {
-  id                  String            @id @default(uuid())
-  extractedQuestionId String
-  latex               String
-  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
-}
-
-model QuestionDiagram {
-  id                  String            @id @default(uuid())
-  extractedQuestionId String
-  diagramUrl          String
-  description         String?
-  extractedQuestion   ExtractedQuestion @relation(fields: [extractedQuestionId], references: [id], onDelete: Cascade)
-}
-
-model PaperAnalytics {
-  id                  String        @id @default(uuid())
-  questionPaperId     String        @unique
-  overallSimilarity   Float
-  repeatedCount       Int
-  uniqueCount         Int
-  totalQuestions      Int
-  topicDistribution   String
-  yearDistribution    String
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @default(now()) @updatedAt
-  questionPaper       QuestionPaper @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
-}
 
 // ─── User Engagement & Status ──────────────────────────────
 model Bookmark {
   id              String         @id @default(uuid())
   userId          String
   resourceId      String?
-  questionPaperId String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   resource        Resource?      @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  questionPaper   QuestionPaper? @relation(fields: [questionPaperId], references: [id], onDelete: Cascade)
 }
 
 model DownloadedResource {
@@ -654,3 +517,140 @@ model Attendance {
   @@index([studentProfileId])
   @@unique([courseAssignmentId, studentProfileId, date])
 }
+
+// ─── PYQ Analyzer System (Next-Gen) ──────────────────────────────
+model PYQPaper {
+  id               String   @id @default(uuid())
+  title            String
+  collegeName      String?
+  departmentName   String?
+  subjectName      String?
+  semester         Int?
+  examType         String?  // e.g., "End Semester", "Mid Semester"
+  year             Int?
+  fileUrl          String
+  originalFileName String
+  uploadedById     String
+  isProcessed      Boolean  @default(false)
+  status           String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  aiConfidence     Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  uploadedBy User          @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  questions  PYQQuestion[]
+}
+
+model PYQQuestion {
+  id              String   @id @default(uuid())
+  paperId         String
+  questionNumber  String?
+  questionText    String
+  marks           Int?
+  topic           String?
+  subParts        String?
+  latex           String?
+  diagramContext  String?
+  isReconstructed Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  paper       PYQPaper             @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  metadata    PYQQuestionMetadata?
+  images      PYQQuestionImage[]
+  tables      PYQQuestionTable[]
+  equations   PYQQuestionEquation[]
+  sourceMatch PYQSimilarityReport[] @relation("SourceQuestion")
+  targetMatch PYQSimilarityReport[] @relation("TargetQuestion")
+}
+
+model PYQQuestionMetadata {
+  id              String   @id @default(uuid())
+  questionId      String   @unique
+  concept         String?
+  subconcept      String?
+  questionIntent  String?
+  requiredFormula String?
+  solvingMethod   String?
+  difficulty      String?
+  logic           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  question PYQQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model PYQQuestionImage {
+  id         String   @id @default(uuid())
+  questionId String
+  imageUrl   String
+  caption    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  question PYQQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model PYQQuestionTable {
+  id         String   @id @default(uuid())
+  questionId String
+  tableData  String   // JSON stringified table or markdown
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  question PYQQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model PYQQuestionEquation {
+  id         String   @id @default(uuid())
+  questionId String
+  latex      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  question PYQQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model PYQSimilarityReport {
+  id                 String   @id @default(uuid())
+  sourceQuestionId   String
+  targetQuestionId   String
+  conceptMatch       Float
+  logicMatch         Float
+  formulaMatch       Float
+  patternMatch       Float
+  valuesMatch        Float
+  languageSimilarity Float
+  overallSimilarity  Float
+  matchType          String   // EXACT, CONCEPT_REPEATED, MODIFIED, NEW
+  reasoning          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+
+  sourceQuestion PYQQuestion @relation("SourceQuestion", fields: [sourceQuestionId], references: [id], onDelete: Cascade)
+  targetQuestion PYQQuestion @relation("TargetQuestion", fields: [targetQuestionId], references: [id], onDelete: Cascade)
+}
+
+model PYQReplacement {
+  id               String   @id @default(uuid())
+  originalQId      String
+  replacementText  String
+  marks            Int?
+  topic            String?
+  difficulty       String?
+  status           String   @default("GENERATED") // GENERATED, APPROVED, REJECTED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+}
+
+model PYQChatHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  chatType  String   // PAPER_SPECIFIC, GLOBAL_LIBRARY
+  contextId String?  // Optional Paper ID if paper specific
+  message   String
+  role      String   // USER, AI
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+

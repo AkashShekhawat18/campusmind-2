@@ -8,13 +8,12 @@ from dotenv import load_dotenv
 from services.upload_service import process_upload
 from services.chat_service import handle_chat_stream
 from services.vector_service import delete_collection_for_user
+from services.document_intelligence import process_pyq_document
+from services.similarity_engine import search_pyq_database, compute_overall_paper_analytics
+from services.replacement_engine import generate_question_replacement, generate_updated_pdf
+from services.pyq_chat import stream_pyq_chat
+from fastapi.responses import Response
 
-# New PYQ Redesign Imports
-from services.document_ingestion import ingest_pdf
-from services.question_extraction import extract_questions_from_text
-from services.similarity_service import generate_embedding, find_most_similar
-from services.analytics_service import compute_paper_analytics
-from services.rewrite_service import generate_rewrite
 
 load_dotenv()
 
@@ -83,30 +82,13 @@ async def clear_memory(user_id: str):
     raise HTTPException(status_code=500, detail="Failed to clear memory")
 
 @app.post("/api/ai/pyq/extract")
-async def extract_pyq(
-    file: UploadFile = File(...),
-):
+async def extract_pyq(file: UploadFile = File(...)):
     """
-    Extracts structured questions from a PDF, performing OCR and image preprocessing if needed.
-    Returns a list of extracted question objects.
+    Extracts structured questions from a PDF or Image using Groq Vision and OpenCV.
     """
     try:
-        pages = await ingest_pdf(file)
-        
-        # Combine all page text
-        full_text = "\n".join([p["text"] for p in pages])
-        
-        # Extract structured questions
-        questions = extract_questions_from_text(full_text)
-        
-        # Generate embeddings for each question
-        for q in questions:
-            q_text = q.get("questionText", "")
-            if q_text:
-                q["embedding"] = generate_embedding(q_text)
-            else:
-                q["embedding"] = []
-                
+        file_bytes = await file.read()
+        questions = await process_pyq_document(file_bytes, file.filename, file.content_type)
         return {"status": "success", "questions": questions}
     except Exception as e:
         print(f"PYQ Extraction Error: {e}")
@@ -114,60 +96,66 @@ async def extract_pyq(
 
 @app.post("/api/ai/pyq/similarity")
 async def compute_similarity(
-    questions: list = Body(...), # list of current extracted questions
-    historical_pool: list = Body(...) # list of all historical questions from DB
+    questions: list = Body(...),
+    historical_pool: list = Body(...)
 ):
     """
-    Computes semantic similarity for the current questions against the historical pool.
-    Returns similarity results and paper-level analytics.
+    Computes deep semantic similarity across 6 dimensions.
     """
     try:
-        similarity_results = []
-        for q in questions:
-            target_emb = q.get("embedding")
-            if not target_emb:
-                continue
-                
-            matches = find_most_similar(target_emb, historical_pool, threshold=0.75)
-            
-            # Map matches to similarity results
-            for match in matches:
-                similarity_results.append({
-                    "sourceQuestionId": q.get("id", "temp_id"),
-                    "matchedQuestionId": match["matchedQuestionId"],
-                    "similarityScore": match["similarityScore"],
-                    "matchType": match["matchType"],
-                    "matchedYear": match.get("matchedYear"),
-                    "matchedPaperTitle": match.get("matchedPaperTitle"),
-                    "matchedSubject": match.get("matchedSubject")
-                })
-                
-        analytics = compute_paper_analytics(questions, similarity_results)
+        reports = search_pyq_database(questions, historical_pool)
+        analytics = compute_overall_paper_analytics(questions, reports)
         
         return {
             "status": "success",
-            "similarityResults": similarity_results,
+            "similarityResults": reports,
             "analytics": analytics
         }
     except Exception as e:
         print(f"Similarity Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/ai/pyq/rewrite")
-async def rewrite_question(
-    original_text: str = Form(...),
-    marks: int = Form(5),
-    topic: str = Form("General")
+@app.post("/api/ai/pyq/replace")
+async def replace_question(
+    original_question: dict = Body(...)
 ):
     """
-    Generates a fresh question rewrite for a repeated question.
+    Generates a replacement for a repeated question.
     """
     try:
-        rewrite = generate_rewrite(original_text, marks, topic)
-        return {"status": "success", "rewrittenText": rewrite}
+        replacement = generate_question_replacement(original_question)
+        return {"status": "success", "replacement": replacement}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/ai/pyq/generate-pdf")
+async def generate_pdf(
+    questions: list = Body(...),
+    title: str = Body("Updated Question Paper")
+):
+    """
+    Generates a new PDF with the updated questions.
+    """
+    try:
+        pdf_bytes = generate_updated_pdf(questions, title)
+        return Response(content=pdf_bytes, media_type="application/pdf")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/pyq/chat/stream")
+async def pyq_chat_stream(
+    message: str = Form(...),
+    chat_type: str = Form(...),
+    context_data: str = Form("{}"),
+    history: str = Form("[]")
+):
+    try:
+        import json
+        ctx = json.loads(context_data)
+        hist = json.loads(history)
+        return await stream_pyq_chat(message, chat_type, ctx, hist)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

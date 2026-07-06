@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Trash2, Edit, Shield, ShieldCheck, User } from 'lucide-react';
+import { Users, Trash2, Edit, Shield, ShieldCheck, User, Key } from 'lucide-react';
 
 interface UserData {
   id: string;
@@ -110,6 +110,37 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handlePasswordChange = async (id: string, name: string) => {
+    const newPassword = prompt(`Enter new password for ${name} (minimum 6 characters):`);
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long.');
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('studentToken');
+      const response = await fetch(`http://localhost:5000/api/admin/users/${id}/password`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: newPassword })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        alert(`Password for ${name} has been successfully reset!`);
+      } else {
+        alert(data.error || 'Failed to reset password');
+      }
+    } catch (err: any) {
+      alert(err.message || 'An error occurred');
+      console.error(err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -198,6 +229,13 @@ export default function AdminUsersPage() {
                         title={user.status === 'SUSPENDED' ? "Reactivate User" : "Suspend User"}
                       >
                         {user.status === 'SUSPENDED' ? <ShieldCheck size={18} /> : <Shield size={18} />}
+                      </button>
+                      <button 
+                        onClick={() => handlePasswordChange(user.id, user.name)}
+                        className="p-2 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg text-amber-400 hover:text-amber-300 transition-colors"
+                        title="Reset Password"
+                      >
+                        <Key size={18} />
                       </button>
                       <button 
                         onClick={() => handleDelete(user.id)}

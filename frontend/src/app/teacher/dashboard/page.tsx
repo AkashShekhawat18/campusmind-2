@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 
 interface DashboardStats {
-  questionPapers: number;
   resources: number;
   chats: number;
 }
@@ -19,8 +18,7 @@ export default function TeacherDashboard() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = mounted ? resolvedTheme === 'dark' : true;
-  const [stats, setStats] = useState<DashboardStats>({ questionPapers: 0, resources: 0, chats: 0 });
-  const [recentPapers, setRecentPapers] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({ resources: 0, chats: 0 });
   const [recentResources, setRecentResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +36,6 @@ export default function TeacherDashboard() {
       if (res.ok) {
         const data = await res.json();
         setStats(data.stats);
-        setRecentPapers(data.recentPapers || []);
         setRecentResources(data.recentResources || []);
       }
     } catch (err) {
@@ -49,13 +46,11 @@ export default function TeacherDashboard() {
   };
 
   const statCards = [
-    { label: 'Question Papers', value: stats.questionPapers, icon: FileText, color: 'from-blue-500 to-cyan-400', href: '/teacher/dashboard/pyq-analyzer' },
     { label: 'Resources Shared', value: stats.resources, icon: BookOpen, color: 'from-purple-500 to-pink-400', href: '/teacher/dashboard/resources' },
     { label: 'AI Conversations', value: stats.chats, icon: MessageSquare, color: 'from-green-500 to-emerald-400', href: '/teacher/dashboard/campus-gpt' },
   ];
 
   const quickActions = [
-    { label: 'Upload Question Paper', icon: Upload, href: '/teacher/dashboard/pyq-analyzer', desc: 'Analyze PYQs for similarity' },
     { label: 'Start AI Chat', icon: Sparkles, href: '/teacher/dashboard/campus-gpt', desc: 'Get help from CampusGPT' },
     { label: 'Upload Resource', icon: BookOpen, href: '/teacher/dashboard/resources', desc: 'Share study materials' },
   ];
@@ -88,7 +83,7 @@ export default function TeacherDashboard() {
       </motion.div>
 
       {/* Stats Cards */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -120,7 +115,7 @@ export default function TeacherDashboard() {
           <TrendingUp size={18} className="text-blue-400" />
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
@@ -152,42 +147,7 @@ export default function TeacherDashboard() {
       </motion.div>
 
       {/* Recent Activity */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Recent Papers */}
-        <div className={`rounded-2xl p-6 border ${
-          isDark ? 'bg-[#111113] border-white/5' : 'bg-white border-black/5'
-        }`}>
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <FileText size={16} className="text-blue-400" />
-            Recent Question Papers
-          </h3>
-          {recentPapers.length === 0 ? (
-            <div className={`text-center py-8 ${isDark ? 'text-white/30' : 'text-black/30'}`}>
-              <FileText size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No question papers uploaded yet</p>
-              <Link href="/teacher/dashboard/pyq-analyzer">
-                <span className="text-xs text-blue-400 hover:underline mt-1 inline-block">Upload your first PYQ →</span>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentPapers.map((paper: any) => (
-                <div key={paper.id} className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-                    {paper.year?.toString().slice(-2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{paper.title}</div>
-                    <div className={`text-xs ${isDark ? 'text-white/40' : 'text-black/40'}`}>
-                      Sem {paper.semester} • {paper.subject?.name || 'Unclassified'}
-                    </div>
-                  </div>
-                  <Clock size={12} className="opacity-30" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-6">
 
         {/* Recent Resources */}
         <div className={`rounded-2xl p-6 border ${

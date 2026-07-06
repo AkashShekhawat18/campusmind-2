@@ -2,28 +2,13 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directories exist
-const uploadDirs = ['uploads/pyq', 'uploads/resources'];
-uploadDirs.forEach(dir => {
-  const fullPath = path.join(process.cwd(), dir);
-  if (!fs.existsSync(fullPath)) {
-    fs.mkdirSync(fullPath, { recursive: true });
-  }
-});
+const supabase = require('../utils/supabase');
 
-// PYQ upload config (PDFs only)
-const pyqStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads/pyq'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Use memory storage for all uploads so we can stream to Supabase
+const storage = multer.memoryStorage();
 
 const pyqUpload = multer({
-  storage: pyqStorage,
+  storage: storage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
@@ -36,16 +21,7 @@ const pyqUpload = multer({
 });
 
 // Resource upload config (PDF, DOCX, PPT, Images)
-const resourceStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads/resources'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// using same memory storage
 const allowedResourceTypes = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
@@ -59,7 +35,7 @@ const allowedResourceTypes = [
 ];
 
 const resourceUpload = multer({
-  storage: resourceStorage,
+  storage: storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   fileFilter: (req, file, cb) => {
     if (allowedResourceTypes.includes(file.mimetype)) {
@@ -81,8 +57,31 @@ const getFileTypeCategory = (mimetype) => {
   return 'NOTES';
 };
 
+/**
+ * Upload a file buffer to Supabase Storage
+ */
+const uploadToSupabase = async (fileBuffer, originalName, bucket, mimeType) => {
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  const filePath = `${uniqueSuffix}${path.extname(originalName)}`;
+  
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(filePath, fileBuffer, {
+      contentType: mimeType,
+      upsert: false
+    });
+    
+  if (error) {
+    console.error('Supabase upload error:', error);
+    throw new Error('Failed to upload file to storage');
+  }
+  
+  return data.path; // returns the path within the bucket
+};
+
 module.exports = {
   pyqUpload,
   resourceUpload,
-  getFileTypeCategory
+  getFileTypeCategory,
+  uploadToSupabase
 };

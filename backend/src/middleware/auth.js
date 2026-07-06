@@ -20,8 +20,15 @@ const protect = async (req, res, next) => {
 
     const decoded = data.user;
     
-    // Fetch user to verify status
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    // Fetch user to verify status (fallback to email for legacy users pre-migration)
+    const user = await prisma.user.findFirst({ 
+      where: { 
+        OR: [
+          { id: decoded.id },
+          { email: decoded.email }
+        ]
+      }
+    });
     
     if (!user) {
       return res.status(401).json({ error: 'User not found in local database' });

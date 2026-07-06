@@ -99,7 +99,7 @@ export default function AdminGPTPage() {
   };
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="space-y-6 h-[calc(100vh-6rem)] flex flex-col">
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Campus GPT Controls</h1>
         <p className="text-gray-400">Monitor live AI conversations and manage model parameters.</p>
@@ -136,7 +136,7 @@ export default function AdminGPTPage() {
                 <div className="p-4 border-b border-white/10 font-medium text-white">
                   Recent Conversations
                 </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                <div className="flex-1 overflow-y-auto p-2 space-y-1" data-lenis-prevent>
                   {loadingHistory ? (
                     <div className="p-4 text-center text-gray-400">Loading...</div>
                   ) : chats.length === 0 ? (
@@ -167,7 +167,7 @@ export default function AdminGPTPage() {
                       <h3 className="font-bold text-white text-lg">{selectedChat.title || 'Untitled Conversation'}</h3>
                       <p className="text-sm text-gray-400 mt-1">Initiated by {selectedChat.user.name} ({selectedChat.user.email})</p>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6" data-lenis-prevent>
                       {selectedChat.messages.map(msg => (
                         <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                           {msg.role !== 'user' && (

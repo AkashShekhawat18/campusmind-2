@@ -60,7 +60,7 @@ async def extract_text(file: UploadFile) -> str:
                                     ],
                                 }
                             ],
-                            model="llama-3.2-11b-vision-preview",
+                            model="llama-3.2-90b-vision-preview",
                         )
                         page_text = res.choices[0].message.content
                     except Exception as e:
@@ -113,7 +113,7 @@ async def extract_text(file: UploadFile) -> str:
                             ],
                         }
                     ],
-                    model="llama-3.2-11b-vision-preview",
+                    model="llama-3.2-90b-vision-preview",
                 )
                 text = res.choices[0].message.content
             except Exception as e:
@@ -181,50 +181,3 @@ async def process_upload(file: UploadFile, user_id: str):
         }
     return {"filename": file.filename, "size": file_size, "status": "failed", "reason": "Database storage failed"}
 
-async def process_pyq_upload(file: UploadFile):
-    """
-    Extracts structured questions from a PYQ (Previous Year Question Paper) using an LLM.
-    """
-    text = await extract_text(file)
-    if not text.strip():
-        return {"filename": file.filename, "status": "failed", "reason": "No text extracted"}
-        
-    client = get_groq_client()
-    prompt = f"""
-    You are an AI trained to extract questions from academic question papers.
-    Extract every question from the following text.
-    Return a JSON object with a single key 'questions' containing a list of objects.
-    Each object must exactly match this JSON schema:
-    - questionNumber (string or null)
-    - questionText (string)
-    - marks (integer or null)
-    - section (string or null)
-    - subParts (string or null)
-    - topic (string or null)
-    - unit (string or null)
-    - unit (string or null)
-
-    CRITICAL INSTRUCTIONS:
-    - EXTRACT THE ENTIRE QUESTION TEXT exactly as it appears. DO NOT summarize, truncate, or stop early. Include all paragraphs, sentences, and sub-parts.
-    - RECONSTRUCT ALL mathematical equations, symbols, and formulas into standard LaTeX.
-    - Enclose ONLY the mathematical symbols and equations in $...$ for inline and $$...$$ for block. 
-    - DO NOT enclose entire English sentences or normal words in $...$. Regular text MUST remain outside the math delimiters so spaces are preserved.
-    - Do NOT output unicode math symbols (e.g., use $x \in \\{{0, 1\\}}^n$ instead of x ∈ {{0, 1}}^n).
-    - Preserve markdown tables in questionText.
-
-    Question Paper Text:
-    {text}
-    """
-    
-    try:
-        res = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
-            response_format={"type": "json_object"}
-        )
-        questions_json = json.loads(res.choices[0].message.content)
-        questions = questions_json.get("questions", [])
-        return {"filename": file.filename, "status": "success", "questions": questions, "extractedText": text}
-    except Exception as e:
-        print(f"Error extracting structured PYQ: {e}")
-        return {"filename": file.filename, "status": "failed", "reason": "Failed to parse questions"}

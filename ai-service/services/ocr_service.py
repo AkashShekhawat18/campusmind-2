@@ -37,7 +37,7 @@ def extract_text_with_vision_api(image_bytes: bytes, mime_type: str = "image/jpe
                     ],
                 }
             ],
-            model="llama-3.2-11b-vision-preview",
+            model="llama-3.2-90b-vision-preview",
             temperature=0.1
         )
         return res.choices[0].message.content.strip()
