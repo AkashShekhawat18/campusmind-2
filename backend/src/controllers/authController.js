@@ -10,10 +10,11 @@ const registerUser = async (req, res, next) => {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Register with Supabase
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Register with Supabase Admin API to auto-confirm email for local development
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
+      email_confirm: true // Auto-confirms the email!
     });
 
     if (authError) {
