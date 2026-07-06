@@ -71,7 +71,6 @@ export default function AdminGPTPage() {
 
     if (activeTab === 'history' && !hasChats) fetchHistory();
     if (activeTab === 'config' && !hasSettings) fetchConfig();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, hasChats, hasSettings]);
 
   const handleSettingChange = (key: string, value: string) => {
