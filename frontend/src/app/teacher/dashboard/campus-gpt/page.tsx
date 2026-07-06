@@ -334,7 +334,7 @@ export default function TeacherCampusGPT() {
 
   return (
     <div className={`flex h-[calc(100vh-3.5rem)] overflow-hidden ${isDark ? 'bg-[#0a0a0c]' : 'bg-[#f0f0f5]'}`} {...getRootProps()}>
-      <input {...getInputProps()} />
+      <input title="File upload" placeholder="Upload files" aria-label="Upload files" {...getInputProps()} />
       {/* Drag Overlay */}
       <AnimatePresence>
         {isDragActive && (
@@ -378,6 +378,7 @@ export default function TeacherCampusGPT() {
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
             <Search size={14} className="opacity-40" />
             <input
+              title="Search chats"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -403,16 +404,18 @@ export default function TeacherCampusGPT() {
             >
               {editingChatId === chat.id ? (
                 <div className="flex items-center gap-1 flex-1">
-                  <input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="flex-1 bg-transparent border-none outline-none text-xs"
-                    autoFocus
-                    onKeyDown={(e) => e.key === 'Enter' && handleRename(chat.id)}
-                  />
-                  <button onClick={() => handleRename(chat.id)}><Check size={12} className="text-green-400" /></button>
-                  <button onClick={() => setEditingChatId(null)}><X size={12} className="text-red-400" /></button>
-                </div>
+                    <input
+                      title="Edit chat title"
+                      placeholder="Chat title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="flex-1 bg-transparent border-none outline-none text-xs"
+                      autoFocus
+                      onKeyDown={(e) => e.key === 'Enter' && handleRename(chat.id)}
+                    />
+                    <button title="Confirm rename" aria-label="Confirm rename" onClick={() => handleRename(chat.id)}><Check size={12} className="text-green-400" /></button>
+                    <button title="Cancel rename" aria-label="Cancel rename" onClick={() => setEditingChatId(null)}><X size={12} className="text-red-400" /></button>
+                  </div>
               ) : (
                 <>
                   <MessageSquare size={14} className="opacity-40 flex-shrink-0" />
@@ -420,10 +423,10 @@ export default function TeacherCampusGPT() {
                     {chat.title}
                   </span>
                   <div className="hidden group-hover:flex items-center gap-1">
-                    <button onClick={() => { setEditingChatId(chat.id); setEditTitle(chat.title); }}>
+                    <button title="Rename chat" aria-label="Rename chat" onClick={() => { setEditingChatId(chat.id); setEditTitle(chat.title); }}>
                       <Edit3 size={12} className="opacity-40 hover:opacity-100" />
                     </button>
-                    <button onClick={() => handleDelete(chat.id)}>
+                    <button title="Delete chat" aria-label="Delete chat" onClick={() => handleDelete(chat.id)}>
                       <Trash2 size={12} className="opacity-40 hover:opacity-100 text-red-400" />
                     </button>
                   </div>
@@ -512,6 +515,8 @@ export default function TeacherCampusGPT() {
                                   return match ? (
                                     <div className="relative group/code my-3">
                                       <button
+                                        title="Copy code"
+                                        aria-label="Copy code"
                                         onClick={() => handleCopy(codeStr, msg.id + match[1])}
                                         className="absolute top-2 right-2 p-1.5 rounded-md bg-white/10 opacity-0 group-hover/code:opacity-100 transition-opacity"
                                       >
@@ -569,6 +574,8 @@ export default function TeacherCampusGPT() {
                       } ${file.status === 'error' ? 'border-red-500/50' : ''}`}
                     >
                       <button 
+                        title="Remove file"
+                        aria-label="Remove file"
                         onClick={() => removeAttachedFile(file.id)} 
                         className={`absolute -top-2 -right-2 p-1 rounded-full shadow-md transition-opacity opacity-0 group-hover:opacity-100 ${
                           isDark ? 'bg-[#2a2a2c] text-white hover:bg-red-500' : 'bg-white text-black hover:bg-red-50 hover:text-red-500'
@@ -625,6 +632,7 @@ export default function TeacherCampusGPT() {
               </button>
 
               <input
+                title="Chat input"
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -634,6 +642,8 @@ export default function TeacherCampusGPT() {
               />
               
               <button
+                title="Send message"
+                aria-label="Send message"
                 onClick={handleSend}
                 disabled={(!input.trim() && attachedFiles.filter(f => f.status === 'ready').length === 0) || isTyping || isUploadingAny}
                 className={`p-3 rounded-xl transition-all flex items-center gap-2 ${

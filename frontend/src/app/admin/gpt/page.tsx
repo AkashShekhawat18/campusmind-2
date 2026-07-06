@@ -31,6 +31,9 @@ export default function AdminGPTPage() {
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
 
+  const hasChats = chats.length > 0;
+  const hasSettings = Object.keys(settings).length > 0;
+
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -66,9 +69,10 @@ export default function AdminGPTPage() {
       }
     };
 
-    if (activeTab === 'history' && chats.length === 0) fetchHistory();
-    if (activeTab === 'config' && Object.keys(settings).length === 0) fetchConfig();
-  }, [activeTab, chats.length, Object.keys(settings).length]);
+    if (activeTab === 'history' && !hasChats) fetchHistory();
+    if (activeTab === 'config' && !hasSettings) fetchConfig();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, hasChats, hasSettings]);
 
   const handleSettingChange = (key: string, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -216,6 +220,7 @@ export default function AdminGPTPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">AI Model</label>
                     <select 
+                      title="AI Model"
                       value={settings.ai_model || 'gemini-1.5-pro'}
                       onChange={(e) => handleSettingChange('ai_model', e.target.value)}
                       className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
@@ -234,6 +239,8 @@ export default function AdminGPTPage() {
                       <span className="text-purple-400">{settings.ai_temperature || '0.7'}</span>
                     </label>
                     <input 
+                      title="Temperature"
+                      placeholder="Temperature"
                       type="range" 
                       min="0" max="2" step="0.1" 
                       value={settings.ai_temperature || '0.7'}
@@ -250,6 +257,8 @@ export default function AdminGPTPage() {
                       <span className="text-purple-400">{settings.ai_top_p || '0.9'}</span>
                     </label>
                     <input 
+                      title="Top P"
+                      placeholder="Top P"
                       type="range" 
                       min="0" max="1" step="0.05" 
                       value={settings.ai_top_p || '0.9'}
@@ -262,6 +271,8 @@ export default function AdminGPTPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Max Output Tokens</label>
                     <input 
+                      title="Max Output Tokens"
+                      placeholder="Max Output Tokens"
                       type="number" 
                       value={settings.ai_max_tokens || '2048'}
                       onChange={(e) => handleSettingChange('ai_max_tokens', e.target.value)}
@@ -273,6 +284,8 @@ export default function AdminGPTPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">RAG Chunk Size (Tokens)</label>
                     <input 
+                      title="RAG Chunk Size"
+                      placeholder="RAG Chunk Size"
                       type="number" 
                       value={settings.ai_chunk_size || '1024'}
                       onChange={(e) => handleSettingChange('ai_chunk_size', e.target.value)}

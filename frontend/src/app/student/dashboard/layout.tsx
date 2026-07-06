@@ -77,6 +77,8 @@ export default function StudentDashboardLayout({
                 </span>
               </Link>
               <button
+                title="Close sidebar"
+                aria-label="Close sidebar"
                 onClick={() => setSidebarOpen(false)}
                 className="md:hidden p-1.5 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
               >
@@ -170,6 +172,8 @@ export default function StudentDashboardLayout({
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <button
+                title="Open sidebar"
+                aria-label="Open sidebar"
                 onClick={() => setSidebarOpen(true)}
                 className="p-2 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
               >
