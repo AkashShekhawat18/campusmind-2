@@ -12,9 +12,27 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const { data, error } = await supabase.auth.getUser(token);
+    let data, error;
+    let retries = 3;
+    console.log('[protect] Validating token...');
+    while (retries > 0) {
+      try {
+        const response = await supabase.auth.getUser(token);
+        console.log('[protect] Validation response received.');
+        data = response.data;
+        error = response.error;
+        break;
+      } catch (err) {
+        if ((err.code === 'ECONNRESET' || (err.cause && err.cause.code === 'ECONNRESET')) && retries > 1) {
+          retries--;
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+        throw err;
+      }
+    }
     
-    if (error || !data.user) {
+    if (error || !data?.user) {
         return res.status(401).json({ error: 'Not authorized, token failed' });
     }
 

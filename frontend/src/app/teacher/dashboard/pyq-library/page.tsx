@@ -46,6 +46,26 @@ export default function TeacherPYQLibrary() {
     }
   };
 
+  const handleDeletePaper = async (paperId: string) => {
+    if (!confirm("Are you sure you want to delete this paper? All associated questions will be deleted as well.")) return;
+    
+    try {
+      const token = localStorage.getItem("teacherToken");
+      const res = await fetch(`http://localhost:5000/api/pyq/library/${paperId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchLibrary(); // Refresh the list
+      } else {
+        alert("Failed to delete paper");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting paper");
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -229,7 +249,7 @@ export default function TeacherPYQLibrary() {
               <div className="flex gap-2">
                 <button className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-500 hover:bg-red-50'}`} onClick={(e) => {
                   e.stopPropagation();
-                  alert("Delete functionality to be implemented.");
+                  handleDeletePaper(paper.id);
                 }}>
                   <Trash2 size={16} />
                 </button>

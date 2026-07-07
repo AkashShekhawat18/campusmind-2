@@ -13,6 +13,7 @@ export default function TeacherPYQAnalyzer() {
   const [file, setFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [report, setReport] = useState<any>(null);
+  const [replacements, setReplacements] = useState<Record<number, { text: string, reasoning: string, loading: boolean }>>({});
 
   useEffect(() => {
     setMounted(true);
@@ -54,24 +55,41 @@ export default function TeacherPYQAnalyzer() {
     }
   };
 
-  const handleReplaceQuestion = async (originalQ: any) => {
+  const handleReplaceQuestion = async (res: any, idx: number) => {
+    if (!res.originalQuestion) {
+      alert("Original question context missing. Please analyze a new paper to get context.");
+      return;
+    }
+    
+    setReplacements(prev => ({ ...prev, [idx]: { text: '', reasoning: '', loading: true } }));
+    
     try {
       const token = localStorage.getItem("teacherToken");
-      const res = await fetch(`http://localhost:5000/api/pyq/replace`, {
+      const apiRes = await fetch(`http://localhost:5000/api/pyq/replace`, {
         method: 'POST',
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ originalQuestion: originalQ })
+        body: JSON.stringify({ originalQuestion: res.originalQuestion })
       });
       
-      if (res.ok) {
-        const data = await res.json();
-        alert(`Replacement Generated: \n\n${data.replacement.replacementText}`);
+      if (apiRes.ok) {
+        const data = await apiRes.json();
+        setReplacements(prev => ({ 
+          ...prev, 
+          [idx]: { 
+            text: data.replacement.replacementText, 
+            reasoning: data.replacement.reasoning, 
+            loading: false 
+          } 
+        }));
+      } else {
+        setReplacements(prev => ({ ...prev, [idx]: { text: 'Failed to generate replacement.', reasoning: '', loading: false } }));
       }
     } catch (e) {
       console.error(e);
+      setReplacements(prev => ({ ...prev, [idx]: { text: 'An error occurred during generation.', reasoning: '', loading: false } }));
     }
   };
 
@@ -175,7 +193,7 @@ export default function TeacherPYQAnalyzer() {
                     <div className="flex justify-between items-start">
                       <h4 className="font-semibold text-lg flex items-center gap-2">
                         <FileQuestion className="w-5 h-5 opacity-50"/> 
-                        Question ID: {res.sourceQuestionId.substring(0, 8)}
+                        Question ID: {res.sourceQuestionId ? res.sourceQuestionId.substring(0, 8) : 'NEW'}
                       </h4>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                         res.matchType === 'EXACT' ? 'border-rose-500 text-rose-500 bg-rose-500/10' : 
@@ -187,7 +205,7 @@ export default function TeacherPYQAnalyzer() {
                     </div>
                     
                     <div className={`p-4 rounded-lg text-sm font-mono whitespace-pre-wrap ${isDark ? 'bg-black/30' : 'bg-black/5'}`}>
-                      Matched with: {res.targetQuestionId.substring(0, 8)}
+                      Matched with: {res.targetQuestionId ? res.targetQuestionId.substring(0, 8) : 'N/A'}
                     </div>
                     
                     <p className={`text-sm border-l-2 pl-4 py-1 ${isDark ? 'border-white/20' : 'border-black/20'}`}>
@@ -218,10 +236,32 @@ export default function TeacherPYQAnalyzer() {
                     
                     <button 
                       className={`w-full mt-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`}
-                      onClick={() => handleReplaceQuestion(res)}
+                      onClick={() => handleReplaceQuestion(res, idx)}
+                      disabled={replacements[idx]?.loading}
                     >
-                      Generate Replacement
+                      {replacements[idx]?.loading ? "Generating..." : "Generate Replacement"}
                     </button>
+                    
+                    {replacements[idx] && !replacements[idx].loading && (
+                      <div className={`mt-4 p-4 rounded-xl border border-emerald-500/30 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+                        <h6 className="font-semibold text-emerald-600 mb-2 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4" /> New AI Question
+                        </h6>
+                        <p className="text-sm mb-3">{replacements[idx].text}</p>
+                        {replacements[idx].reasoning && (
+                          <p className="text-xs opacity-70 italic border-t border-emerald-500/20 pt-2 mb-2">Reasoning: {replacements[idx].reasoning}</p>
+                        )}
+                        <div className={`mt-2 p-2 rounded bg-black/5 text-xs opacity-80 border-l-2 border-emerald-500/50`}>
+                          <span className="font-semibold block mb-1">Replaced Question:</span>
+                          <p className="truncate mb-1">{res.originalQuestion?.questionText}</p>
+                          <p className="font-mono text-[10px]">
+                            Concept: {res.originalQuestion?.metadata?.concept || 'N/A'} | 
+                            Difficulty: {res.originalQuestion?.metadata?.difficulty || 'N/A'} | 
+                            Marks: {res.originalQuestion?.marks || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>

@@ -18,62 +18,59 @@ def get_groq_client():
     api_key = random.choice(key_list)
     return Groq(api_key=api_key)
 
-def process_image_with_vision(image_base64: str) -> Dict[str, Any]:
+def process_text_with_llm(text: str) -> Dict[str, Any]:
     """
-    Sends an image page to Groq Vision Llama 3.2 11B/90B to extract all questions,
-    tables, equations, and diagrams.
+    Sends extracted text to Groq Llama 3 to extract all questions, tables, and equations.
     """
     client = get_groq_client()
     
-    prompt = """
+    prompt = f"""
     You are an expert AI Professor extracting questions from an academic exam paper.
-    Analyze this image and extract every single question.
+    Analyze the following extracted text from a PDF page and extract every single question.
+    
+    TEXT:
+    {text}
     
     CRITICAL INSTRUCTIONS:
     1. EXTRACT ALL QUESTIONS exactly as they appear. Do not summarize.
-    2. RECONSTRUCT all mathematical formulas, physics equations, and chemical equations into standard LaTeX (e.g. $\\frac{1}{2}mv^2$ or $$E=mc^2$$). 
+    2. RECONSTRUCT all mathematical formulas, physics equations, and chemical equations into standard LaTeX (e.g. $\\frac{{1}}{{2}}mv^2$ or $$E=mc^2$$). 
     3. If there is a TABLE, reconstruct it into Markdown format within the question text.
-    4. If there is a DIAGRAM or GRAPH, provide a detailed textual description in the 'diagramContext' field.
-    5. Maintain question numbering and sub-parts correctly.
+    4. Maintain question numbering and sub-parts correctly.
     
     Return a JSON object matching this schema:
-    {
+    {{
       "questions": [
-        {
+        {{
           "questionNumber": "String (e.g., '1(a)')",
           "questionText": "Full text including markdown tables and inline $latex$",
           "marks": "Integer (if visible, else null)",
           "topic": "String (Infer the general topic)",
           "subParts": "String (Any sub-questions combined)",
           "latex": "String (List of all major equations in this question)",
-          "diagramContext": "String (Describe any diagram associated with this question)"
-        }
+          "diagramContext": "String (null - diagrams not supported)"
+        }}
       ]
-    }
+    }}
     Output ONLY valid JSON.
     """
     
     try:
-        # We use the vision preview model
         res = client.chat.completions.create(
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
-                    ],
+                    "content": prompt,
                 }
             ],
-            model="llama-3.2-90b-vision-preview",
+            model="llama-3.3-70b-versatile",
             response_format={"type": "json_object"},
             temperature=0.1
         )
         content = res.choices[0].message.content
         return json.loads(content)
     except Exception as e:
-        print(f"Vision API Error: {e}")
-        return {"questions": []}
+        print(f"Text Extraction API Error: {e}")
+        raise Exception(f"AI Extraction failed: {str(e)}")
 
 def deep_question_understanding(question: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -85,7 +82,6 @@ def deep_question_understanding(question: Dict[str, Any]) -> Dict[str, Any]:
     
     Question Text: {question.get('questionText', '')}
     Equations: {question.get('latex', '')}
-    Diagram Context: {question.get('diagramContext', '')}
     
     Determine the following:
     - concept: The core academic concept tested (e.g., 'Database Normalization', 'Newtonian Mechanics').
@@ -124,35 +120,26 @@ def deep_question_understanding(question: Dict[str, Any]) -> Dict[str, Any]:
 
 async def process_pyq_document(file_bytes: bytes, filename: str, mime_type: str) -> List[Dict[str, Any]]:
     """
-    End-to-end pipeline: OCR/Vision -> Extraction -> Fingerprinting -> Embedding
+    End-to-end pipeline: Text Extraction -> Extraction -> Fingerprinting -> Embedding
     """
     all_questions = []
     
     if mime_type == "application/pdf" or filename.lower().endswith(".pdf"):
-        # Process PDF page by page as images to capture layout perfectly
+        # Process PDF page by page to extract text
         pdf_document = fitz.open(stream=file_bytes, filetype="pdf")
         for page_num in range(len(pdf_document)):
             page = pdf_document.load_page(page_num)
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2)) # Higher resolution
+            text = page.get_text()
             
-            # Convert to JPEG bytes
-            img_bytes = pix.tobytes("jpeg")
-            
-            # Enhance text just in case (optional for born-digital PDFs, but good for scanned)
-            # We'll skip enhancement for PDFs assuming they are reasonably clean, or apply conditionally.
-            # To be safe, we just pass the image to vision.
-            b64_image = image_to_base64(img_bytes)
-            
-            page_data = process_image_with_vision(b64_image)
-            all_questions.extend(page_data.get("questions", []))
+            if text and len(text.strip()) > 10:
+                page_data = process_text_with_llm(text)
+                all_questions.extend(page_data.get("questions", []))
             
     elif mime_type.startswith("image/"):
-        # Apply OpenCV enhancements for camera photos
-        enhanced_bytes = enhance_camera_image(file_bytes)
-        b64_image = image_to_base64(enhanced_bytes)
+        raise Exception("Image uploads are temporarily unsupported due to Groq Vision API decommissioning. Please upload a PDF.")
         
-        page_data = process_image_with_vision(b64_image)
-        all_questions.extend(page_data.get("questions", []))
+    if not all_questions:
+        raise Exception("Failed to extract any text or questions from the provided document. Please ensure it is a valid, readable PDF (not purely scanned images) and try again.")
         
     # Now that we have extracted questions, generate fingerprint and embeddings
     processed_questions = []

@@ -12,8 +12,10 @@ const upload = multer({ storage: storage });
 router.use(protect);
 
 // PYQ Library endpoints
+router.get('/debug-db', (req, res) => res.json({ db: process.env.DATABASE_URL }));
 router.post('/upload', upload.single('file'), pyqController.uploadPYQ);
 router.get('/library', pyqController.getPYQLibrary);
+router.delete('/library/:id', pyqController.deletePYQ);
 
 // Current Paper Analyzer endpoints (Should be restricted to teachers, but using basic protect for now)
 router.post('/analyze', upload.single('file'), pyqController.analyzeCurrentPaper);

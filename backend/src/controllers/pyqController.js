@@ -183,3 +183,29 @@ exports.generatePDF = async (req, res) => {
     res.status(500).json({ error: 'Failed to generate PDF' });
   }
 };
+
+exports.deletePYQ = async (req, res) => {
+  try {
+    console.log('Attempting to delete PYQ with ID:', req.params.id);
+    const { id } = req.params;
+    
+    // Attempt to get paper to delete file from Supabase storage if we want
+    const paper = await prisma.pYQPaper.findUnique({ where: { id } });
+    if (!paper) {
+      console.log('Paper not found:', id);
+      return res.status(404).json({ error: 'Paper not found' });
+    }
+
+    console.log('Found paper, deleting from DB:', paper.id);
+    // Delete from DB (will cascade to questions)
+    await prisma.pYQPaper.delete({
+      where: { id }
+    });
+
+    console.log('Successfully deleted paper');
+    res.status(200).json({ message: 'Paper deleted successfully' });
+  } catch (error) {
+    console.error('Delete PYQ Error Details:', error);
+    res.status(500).json({ error: 'Failed to delete PYQ paper', details: error.message });
+  }
+};

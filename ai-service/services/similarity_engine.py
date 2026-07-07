@@ -1,6 +1,7 @@
 import json
 from typing import List, Dict, Any
 import numpy as np
+import difflib
 
 def cosine_similarity(v1: List[float], v2: List[float]) -> float:
     if not v1 or not v2:
@@ -26,8 +27,13 @@ def calculate_similarity_report(source_q: Dict[str, Any], target_q: Dict[str, An
     """
     # 1. Base semantic similarity using embeddings (used as a proxy for language/pattern)
     emb_sim = 0.0
-    if "embedding" in source_q and "embedding" in target_q:
+    if "embedding" in source_q and "embedding" in target_q and len(source_q["embedding"]) > 0 and len(target_q["embedding"]) > 0:
         emb_sim = cosine_similarity(source_q["embedding"], target_q["embedding"])
+    else:
+        # Fallback to SequenceMatcher if embeddings are not available
+        s_text = source_q.get("questionText", "")
+        t_text = target_q.get("questionText", "")
+        emb_sim = difflib.SequenceMatcher(None, s_text, t_text).ratio()
         
     s_meta = source_q.get("metadata", {})
     t_meta = target_q.get("metadata", {})
@@ -94,7 +100,12 @@ def calculate_similarity_report(source_q: Dict[str, Any], target_q: Dict[str, An
         "languageSimilarity": round(lang_match * 100, 2),
         "overallSimilarity": overall_percent,
         "matchType": match_type,
-        "reasoning": f"Calculated based on {concept_match*100:.0f}% concept match and {logic_match*100:.0f}% logic match."
+        "reasoning": f"Calculated based on {concept_match*100:.0f}% concept match and {logic_match*100:.0f}% logic match.",
+        "originalQuestion": {
+            "questionText": source_q.get("questionText", ""),
+            "marks": source_q.get("marks", 5),
+            "metadata": source_q.get("metadata", {})
+        }
     }
 
 def search_pyq_database(questions: List[Dict[str, Any]], historical_pool: List[Dict[str, Any]], threshold: float = 40.0) -> List[Dict[str, Any]]:
