@@ -1,4 +1,4 @@
-const supabase = require('../utils/supabase');
+const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prisma');
 
 const protect = async (req, res, next) => {
@@ -12,40 +12,10 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    let data, error;
-    let retries = 3;
-    console.log('[protect] Validating token...');
-    while (retries > 0) {
-      try {
-        const response = await supabase.auth.getUser(token);
-        console.log('[protect] Validation response received.');
-        data = response.data;
-        error = response.error;
-        break;
-      } catch (err) {
-        if ((err.code === 'ECONNRESET' || (err.cause && err.cause.code === 'ECONNRESET')) && retries > 1) {
-          retries--;
-          await new Promise(r => setTimeout(r, 500));
-          continue;
-        }
-        throw err;
-      }
-    }
-    
-    if (error || !data?.user) {
-        return res.status(401).json({ error: 'Not authorized, token failed' });
-    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
-    const decoded = data.user;
-    
-    // Fetch user to verify status (fallback to email for legacy users pre-migration)
-    const user = await prisma.user.findFirst({ 
-      where: { 
-        OR: [
-          { id: decoded.id },
-          { email: decoded.email }
-        ]
-      }
+    const user = await prisma.user.findUnique({ 
+      where: { id: decoded.id }
     });
     
     if (!user) {

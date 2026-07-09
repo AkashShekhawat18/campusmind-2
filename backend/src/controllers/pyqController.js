@@ -2,25 +2,34 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const axios = require('axios');
 const FormData = require('form-data');
-const { createClient } = require('@supabase/supabase-js');
+const cloudinary = require('../utils/cloudinary');
+const streamifier = require('streamifier');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY);
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+const uploadToCloudinary = (buffer, originalname) => {
+  return new Promise((resolve, reject) => {
+    const ext = originalname ? require('path').extname(originalname) : '.pdf';
+    const public_id = `file_${Date.now()}${ext}`;
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: 'campusmind/resources', resource_type: 'raw', public_id },
+      (error, result) => {
+        if (result) resolve(result);
+        else reject(error);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+};
 
 exports.uploadPYQ = async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
     
-    // 1. Upload file to Supabase Storage
-    const fileName = `${Date.now()}_${file.originalname}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('resources')
-      .upload(fileName, file.buffer, { contentType: file.mimetype });
-      
-    if (uploadError) throw uploadError;
-    
-    const { data: { publicUrl } } = supabase.storage.from('resources').getPublicUrl(fileName);
+    // 1. Upload file to Cloudinary
+    const uploadResult = await uploadToCloudinary(file.buffer, file.originalname);
+    const publicUrl = uploadResult.secure_url;
     
     // 2. Call AI Service for extraction
     const form = new FormData();
@@ -32,9 +41,7 @@ exports.uploadPYQ = async (req, res) => {
     
     const questions = aiResponse.data.questions || [];
     
-    // 3. AI Auto Classification (Simulated metadata extraction from first question or text)
-    // In a real flow, you'd have an AI endpoint that classifies the whole text first.
-    // We will create the paper in DB.
+    // 3. AI Auto Classification
     const pyqPaper = await prisma.pYQPaper.create({
       data: {
         title: req.body.title || 'Auto-Detected Title',
@@ -114,7 +121,6 @@ exports.analyzeCurrentPaper = async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
     
-    // 1. Extract questions from current paper
     const form = new FormData();
     form.append('file', file.buffer, file.originalname);
     
@@ -124,7 +130,6 @@ exports.analyzeCurrentPaper = async (req, res) => {
     
     const currentQuestions = extractResponse.data.questions || [];
     
-    // 2. Fetch all historical questions to compare against
     const historicalQuestions = await prisma.pYQQuestion.findMany({
       include: {
         metadata: true,
@@ -134,14 +139,21 @@ exports.analyzeCurrentPaper = async (req, res) => {
       }
     });
     
-    // Format historical pool for AI service
     const formattedPool = historicalQuestions.map(q => ({
       id: q.id,
-      questionText: q.questionText,
-      metadata: q.metadata || {}
+      questionText: q.questionText || '',
+      marks: q.marks,
+      metadata: q.metadata ? {
+        concept: q.metadata.concept || '',
+        subconcept: q.metadata.subconcept || '',
+        questionIntent: q.metadata.questionIntent || '',
+        requiredFormula: q.metadata.requiredFormula || '',
+        solvingMethod: q.metadata.solvingMethod || '',
+        difficulty: q.metadata.difficulty || '',
+        logic: q.metadata.logic || ''
+      } : {}
     }));
     
-    // 3. Send to AI Similarity Engine
     const simResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/similarity`, {
       questions: currentQuestions,
       historical_pool: formattedPool
@@ -186,23 +198,18 @@ exports.generatePDF = async (req, res) => {
 
 exports.deletePYQ = async (req, res) => {
   try {
-    console.log('Attempting to delete PYQ with ID:', req.params.id);
     const { id } = req.params;
     
-    // Attempt to get paper to delete file from Supabase storage if we want
     const paper = await prisma.pYQPaper.findUnique({ where: { id } });
     if (!paper) {
-      console.log('Paper not found:', id);
       return res.status(404).json({ error: 'Paper not found' });
     }
 
-    console.log('Found paper, deleting from DB:', paper.id);
     // Delete from DB (will cascade to questions)
     await prisma.pYQPaper.delete({
       where: { id }
     });
 
-    console.log('Successfully deleted paper');
     res.status(200).json({ message: 'Paper deleted successfully' });
   } catch (error) {
     console.error('Delete PYQ Error Details:', error);

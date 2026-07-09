@@ -14,7 +14,8 @@ model User {
   officialId         String?         @unique
   name               String
   email              String          @unique
-  password           String
+  password           String?
+  googleId           String?         @unique
   role               String          @default("STUDENT") // STUDENT, TEACHER, ADMIN
   status             String          @default("PENDING") // PENDING, ACTIVE, REJECTED, SUSPENDED
   firstLogin         Boolean         @default(true)

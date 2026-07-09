@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { User, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function TeacherLogin() {
   const router = useRouter();
@@ -64,6 +65,46 @@ export default function TeacherLogin() {
       router.push('/teacher/dashboard');
     } catch (err) {
       setError('Network error. Make sure the backend is running.');
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async (credentialResponse: any) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const res = await fetch('http://localhost:5000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: credentialResponse.credential,
+          role: 'TEACHER'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Google Login failed');
+
+      if (data.requirePasswordChange) {
+        setRequirePasswordChange(true);
+        setTempToken(data.tempToken);
+        return;
+      }
+
+      if (data.role !== 'TEACHER' && data.role !== 'ADMIN') {
+        throw new Error('This account is not a teacher account');
+      }
+
+      localStorage.setItem('teacherToken', data.token);
+      localStorage.setItem('teacherName', data.name);
+      localStorage.setItem('teacherEmail', data.email);
+      localStorage.setItem('teacherId', data.id);
+      if (data.officialId) localStorage.setItem('teacherOfficialId', data.officialId);
+      router.push('/teacher/dashboard');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -225,6 +266,16 @@ export default function TeacherLogin() {
               'Sign In'
             )}
           </button>
+          
+          <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="text-sm text-foreground/60">Or continue with</div>
+            <GoogleLogin
+              onSuccess={handleGoogleLogin}
+              onError={() => setError('Google Login Failed')}
+              theme="filled_black"
+              shape="pill"
+            />
+          </div>
         </form>
       )}
 

@@ -109,10 +109,10 @@ export function Malphor() {
           }}
           transition={{ type: 'spring', stiffness: 50, damping: 15, mass: 1 }}
           onClick={handleToggleChat}
-          className="fixed bottom-6 right-6 z-40 w-[280px] h-[350px] cursor-pointer select-none group focus:outline-none"
+          className="fixed bottom-6 right-6 z-40 w-[180px] h-[230px] cursor-pointer select-none group focus:outline-none"
         >
           {/* Speech bubble — rendered in DOM layer above 3D canvas */}
-          <div className="absolute bottom-[200px] right-[240px] w-[250px] pointer-events-none z-50">
+          <div className="absolute bottom-[130px] right-[150px] w-[250px] pointer-events-none z-50">
             <MalphorBubble text={bubbleText} visible={bubbleVisible} />
           </div>
 

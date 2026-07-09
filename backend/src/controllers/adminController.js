@@ -1,5 +1,5 @@
 const prisma = require('../utils/prisma');
-const supabase = require('../utils/supabase');
+const bcrypt = require('bcryptjs');
 
 const logAdminAction = async (userId, action, entityType, entityId, details) => {
   try {
@@ -83,10 +83,6 @@ const updateUser = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
   const { id } = req.params;
   try {
-    // Delete from Supabase Auth as well
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      await supabase.auth.admin.deleteUser(id);
-    }
     await prisma.user.delete({ where: { id } });
     await logAdminAction(req.user.id, 'DELETE_USER', 'User', id, 'Deleted user account');
     res.json({ message: 'User deleted successfully' });
@@ -104,17 +100,13 @@ const updateUserPassword = async (req, res, next) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(403).json({ error: 'Cannot change passwords: SUPABASE_SERVICE_ROLE_KEY is missing in backend .env' });
-    }
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    const { data, error } = await supabase.auth.admin.updateUserById(id, {
-      password: password
+    await prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword }
     });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
 
     await logAdminAction(req.user.id, 'UPDATE_PASSWORD', 'User', id, 'Admin manually reset user password');
     res.json({ message: 'Password updated successfully' });

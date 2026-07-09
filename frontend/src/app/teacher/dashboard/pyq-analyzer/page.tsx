@@ -191,11 +191,14 @@ export default function TeacherPYQAnalyzer() {
                 <div className="p-6 flex flex-col md:flex-row gap-6">
                   <div className="flex-1 space-y-4">
                     <div className="flex justify-between items-start">
-                      <h4 className="font-semibold text-lg flex items-center gap-2">
-                        <FileQuestion className="w-5 h-5 opacity-50"/> 
-                        Question ID: {res.sourceQuestionId ? res.sourceQuestionId.substring(0, 8) : 'NEW'}
+                      <h4 className="font-semibold text-lg flex items-start gap-2">
+                        <FileQuestion className="w-5 h-5 opacity-50 mt-1 shrink-0"/> 
+                        <span>
+                          <span className="text-sm opacity-50 block mb-1">Current Question:</span>
+                          {res.originalQuestion?.questionText ? res.originalQuestion.questionText : (res.sourceQuestionId ? `Question ID: ${res.sourceQuestionId.substring(0, 8)}` : 'NEW')}
+                        </span>
                       </h4>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold border h-fit whitespace-nowrap ${
                         res.matchType === 'EXACT' ? 'border-rose-500 text-rose-500 bg-rose-500/10' : 
                         res.matchType === 'CONCEPT_REPEATED' ? 'border-amber-500 text-amber-500 bg-amber-500/10' : 
                         'border-emerald-500 text-emerald-500 bg-emerald-500/10'
@@ -204,9 +207,12 @@ export default function TeacherPYQAnalyzer() {
                       </span>
                     </div>
                     
-                    <div className={`p-4 rounded-lg text-sm font-mono whitespace-pre-wrap ${isDark ? 'bg-black/30' : 'bg-black/5'}`}>
-                      Matched with: {res.targetQuestionId ? res.targetQuestionId.substring(0, 8) : 'N/A'}
-                    </div>
+                    {res.targetQuestionId && (
+                      <div className={`p-4 rounded-lg text-sm whitespace-pre-wrap ${isDark ? 'bg-black/30' : 'bg-black/5'}`}>
+                        <span className="font-semibold opacity-70 block mb-1 text-xs uppercase tracking-wider">Matched With Historical Question:</span>
+                        {res.matchedQuestionText ? res.matchedQuestionText : `Question ID: ${res.targetQuestionId.substring(0, 8)}`}
+                      </div>
+                    )}
                     
                     <p className={`text-sm border-l-2 pl-4 py-1 ${isDark ? 'border-white/20' : 'border-black/20'}`}>
                       <span className="font-semibold opacity-70">AI Reasoning: </span>

@@ -2,9 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const supabase = require('../utils/supabase');
-
-// Use memory storage for all uploads so we can stream to Supabase
+// Use memory storage for all uploads so we can stream to Cloudinary
 const storage = multer.memoryStorage();
 
 const pyqUpload = multer({
@@ -57,31 +55,8 @@ const getFileTypeCategory = (mimetype) => {
   return 'NOTES';
 };
 
-/**
- * Upload a file buffer to Supabase Storage
- */
-const uploadToSupabase = async (fileBuffer, originalName, bucket, mimeType) => {
-  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-  const filePath = `${uniqueSuffix}${path.extname(originalName)}`;
-  
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(filePath, fileBuffer, {
-      contentType: mimeType,
-      upsert: false
-    });
-    
-  if (error) {
-    console.error('Supabase upload error:', error);
-    throw new Error('Failed to upload file to storage');
-  }
-  
-  return data.path; // returns the path within the bucket
-};
-
 module.exports = {
   pyqUpload,
   resourceUpload,
-  getFileTypeCategory,
-  uploadToSupabase
+  getFileTypeCategory
 };

@@ -1,8 +1,6 @@
 const prisma = require('../utils/prisma');
 const { generateResponse } = require('../services/ai.service');
-const { getFileTypeCategory, uploadToSupabase } = require('../services/resourceService');
-const supabase = require('../utils/supabase');
-
+const { getFileTypeCategory } = require('../services/resourceService');
 // ─── Dashboard ───────────────────────────────────────────────────
 const getDashboard = async (req, res, next) => {
   try {
@@ -32,6 +30,24 @@ const getDashboard = async (req, res, next) => {
 
 
 // ─── Resources: Upload ───────────────────────────────────────────
+const cloudinary = require('../utils/cloudinary');
+const streamifier = require('streamifier');
+
+const uploadToCloudinary = (buffer, originalname) => {
+  return new Promise((resolve, reject) => {
+    const ext = originalname ? require('path').extname(originalname) : '.pdf';
+    const public_id = `file_${Date.now()}${ext}`;
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: 'campusmind/teacher_resources', resource_type: 'raw', public_id },
+      (error, result) => {
+        if (result) resolve(result);
+        else reject(error);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+};
+
 const uploadResource = async (req, res, next) => {
   try {
     if (!req.file) {
@@ -44,7 +60,8 @@ const uploadResource = async (req, res, next) => {
       return res.status(400).json({ error: 'Title, department, semester, and subject are required' });
     }
 
-    const filePath = await uploadToSupabase(req.file.buffer, req.file.originalname, 'resources', req.file.mimetype);
+    const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname);
+    const filePath = uploadResult.secure_url;
 
     try {
       const resource = await prisma.resource.create({
@@ -74,8 +91,7 @@ const uploadResource = async (req, res, next) => {
 
       res.status(201).json(resource);
     } catch (dbError) {
-      console.error('Failed to create resource in DB, rolling back storage:', dbError);
-      await supabase.storage.from('resources').remove([filePath]);
+      console.error('Failed to create resource in DB:', dbError);
       throw dbError;
     }
   } catch (error) {
@@ -137,7 +153,17 @@ const deleteResource = async (req, res, next) => {
       return res.status(403).json({ error: 'You can only delete your own resources' });
     }
 
-    await supabase.storage.from('resources').remove([resource.filePath]);
+    // Attempting to extract public_id from secure_url to delete from Cloudinary
+    // Example: https://res.cloudinary.com/demo/image/upload/v1234/campusmind/teacher_resources/abc.pdf
+    try {
+      const urlParts = resource.filePath.split('/');
+      const filenameWithExt = urlParts[urlParts.length - 1];
+      const filename = filenameWithExt.split('.')[0];
+      const folder = 'campusmind/teacher_resources'; 
+      await cloudinary.uploader.destroy(`${folder}/${filename}`, { resource_type: 'raw' }); // mostly raw for pdfs/docs
+    } catch (err) {
+      console.warn("Could not delete from Cloudinary, continuing DB deletion", err);
+    }
 
     await prisma.resource.delete({ where: { id: req.params.id } });
 

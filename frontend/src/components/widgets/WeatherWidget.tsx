@@ -39,23 +39,29 @@ const fetchIpLocation = async () => {
   return await res.json();
 };
 
-const fetchWeather = async (lat: number, lon: number, city: string): Promise<WeatherData> => {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,visibility`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Weather fetch failed');
-  const data = await res.json();
-  const current = data.current;
+const fetchWeather = async (lat: number, lon: number, city: string): Promise<WeatherData | null> => {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,visibility`;
+    const res = await fetch(url).catch(() => null);
+    
+    if (!res || !res.ok) return null;
+    
+    const data = await res.json();
+    const current = data.current;
 
-  return {
-    city,
-    temp: Math.round(current.temperature_2m),
-    conditionCode: current.weather_code,
-    feelsLike: Math.round(current.apparent_temperature),
-    humidity: current.relative_humidity_2m,
-    windSpeed: Math.round(current.wind_speed_10m),
-    visibility: Math.round(current.visibility / 1000), // convert to km
-    timestamp: Date.now()
-  };
+    return {
+      city,
+      temp: Math.round(current.temperature_2m),
+      conditionCode: current.weather_code,
+      feelsLike: Math.round(current.apparent_temperature),
+      humidity: current.relative_humidity_2m,
+      windSpeed: Math.round(current.wind_speed_10m),
+      visibility: Math.round(current.visibility / 1000), // convert to km
+      timestamp: Date.now()
+    };
+  } catch (err) {
+    return null;
+  }
 };
 
 const WeatherWidgetBase = () => {
@@ -89,9 +95,13 @@ const WeatherWidgetBase = () => {
 
       const getLocationAndWeather = async (lat: number, lon: number, city: string) => {
         const weather = await fetchWeather(lat, lon, city);
-        setData(weather);
-        localStorage.setItem(CACHE_KEY, JSON.stringify(weather));
-        setError(false);
+        if (weather) {
+          setData(weather);
+          localStorage.setItem(CACHE_KEY, JSON.stringify(weather));
+          setError(false);
+        } else {
+          setError(true);
+        }
         setLoading(false);
       };
 

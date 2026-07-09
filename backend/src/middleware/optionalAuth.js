@@ -1,4 +1,5 @@
-const supabase = require('../utils/supabase');
+const jwt = require('jsonwebtoken');
+const prisma = require('../utils/prisma');
 
 const optionalAuth = async (req, res, next) => {
   let token;
@@ -8,9 +9,12 @@ const optionalAuth = async (req, res, next) => {
 
   if (token) {
     try {
-      const { data, error } = await supabase.auth.getUser(token);
-      if (!error && data.user) {
-        req.user = data.user;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+      const user = await prisma.user.findUnique({ 
+        where: { id: decoded.id }
+      });
+      if (user) {
+        req.user = user;
       }
     } catch (error) {
       console.error("Invalid token passed to optionalAuth:", error);

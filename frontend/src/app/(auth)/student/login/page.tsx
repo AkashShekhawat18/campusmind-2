@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function StudentLogin() {
   const router = useRouter();
@@ -123,6 +124,45 @@ export default function StudentLogin() {
     }
   };
 
+  const handleGoogleLogin = async (credentialResponse: any) => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      const res = await fetch('http://localhost:5000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: credentialResponse.credential,
+          role: 'STUDENT'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Google Login failed');
+
+      if (data.requirePasswordChange) {
+        setRequirePasswordChange(true);
+        setTempToken(data.tempToken);
+        return;
+      }
+
+      if (data.role !== 'STUDENT' && data.role !== 'ADMIN') {
+        throw new Error('Access denied. Students only.');
+      }
+
+      localStorage.setItem('studentToken', data.token);
+      localStorage.setItem('studentName', data.name);
+      localStorage.setItem('studentEmail', data.email);
+      if (data.officialId) localStorage.setItem('studentOfficialId', data.officialId);
+      router.push('/student/dashboard');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8 rounded-2xl relative glow-border">
       <div className="flex flex-col items-center mb-8">
@@ -224,6 +264,16 @@ export default function StudentLogin() {
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Demo Login'}
           </button>
+
+          <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="text-sm text-foreground/60">Or continue with</div>
+            <GoogleLogin
+              onSuccess={handleGoogleLogin}
+              onError={() => setError('Google Login Failed')}
+              theme="filled_black"
+              shape="pill"
+            />
+          </div>
         </form>
       )}
 
