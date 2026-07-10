@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes';
 import { Upload, Brain, Loader2, FileQuestion, CheckCircle2, AlertTriangle, FileText, Calendar, Clock, ChevronLeft, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PYQChatbot from '@/components/PYQChatbot';
+import LatexText from '@/components/LatexText';
 import { Bot, MessageSquare } from 'lucide-react';
 
 export default function TeacherPYQAnalyzer() {
@@ -336,7 +337,7 @@ export default function TeacherPYQAnalyzer() {
                         <FileQuestion className="w-5 h-5 opacity-50 mt-1 shrink-0"/> 
                         <span>
                           <span className="text-sm opacity-50 block mb-1">Current Question:</span>
-                          {res.originalQuestion?.questionText ? res.originalQuestion.questionText : (res.sourceQuestionId ? `Question ID: ${res.sourceQuestionId.substring(0, 8)}` : 'NEW')}
+                          {res.originalQuestion?.questionText ? <LatexText>{res.originalQuestion.questionText}</LatexText> : (res.sourceQuestionId ? `Question ID: ${res.sourceQuestionId.substring(0, 8)}` : 'NEW')}
                           {res.originalQuestion?.images && res.originalQuestion.images.length > 0 && (
                             <div className="mt-3 space-y-3">
                               {res.originalQuestion.images.map((img: any, i: number) => (
@@ -366,7 +367,7 @@ export default function TeacherPYQAnalyzer() {
                     {res.targetQuestionId && (
                       <div className={`p-4 rounded-lg text-sm whitespace-pre-wrap ${isDark ? 'bg-black/30' : 'bg-black/5'}`}>
                         <span className="font-semibold opacity-70 block mb-1 text-xs uppercase tracking-wider">Matched With Historical Question:</span>
-                        {res.matchedQuestionText ? res.matchedQuestionText : `Question ID: ${res.targetQuestionId.substring(0, 8)}`}
+                        {res.matchedQuestionText ? <LatexText>{res.matchedQuestionText}</LatexText> : `Question ID: ${res.targetQuestionId.substring(0, 8)}`}
                         {res.matchedQuestionImages && res.matchedQuestionImages.length > 0 && (
                           <div className="mt-3 space-y-3">
                             {res.matchedQuestionImages.map((img: any, i: number) => (

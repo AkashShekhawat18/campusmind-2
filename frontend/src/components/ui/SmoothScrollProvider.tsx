@@ -6,21 +6,29 @@ import { usePathname } from 'next/navigation';
 
 export function SmoothScrollProvider({ children }: { children: React.ReactNode }) {
   const lenisRef = useRef<Lenis | null>(null);
+  const rafIdRef = useRef<number>(0);
   const pathname = usePathname();
+
+  // Determine if the current route should use smooth scrolling
+  const isDashboardRoute = pathname.includes('/dashboard') || pathname.startsWith('/admin');
 
   useEffect(() => {
     // Respect reduced motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
 
+    // Don't use Lenis on dashboard/admin pages — they use fixed layouts
+    // with nested scroll containers that Lenis interferes with
+    if (isDashboardRoute) return;
+
     // Initialize Lenis with smooth, calm settings
     const lenis = new Lenis({
-      duration: 1.5, // Slow down the scroll duration for a more premium, relaxed feel
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Apple-like easing
+      duration: 1.5,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: true,
-      wheelMultiplier: 0.8, // Slightly reduce wheel scroll speed
+      wheelMultiplier: 0.8,
       touchMultiplier: 1.5,
       infinite: false,
     });
@@ -29,15 +37,17 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
 
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafIdRef.current = requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf);
+    rafIdRef.current = requestAnimationFrame(raf);
 
     return () => {
+      cancelAnimationFrame(rafIdRef.current);
       lenis.destroy();
+      lenisRef.current = null;
     };
-  }, []);
+  }, [isDashboardRoute]);
 
   // Reset scroll on navigation
   useEffect(() => {

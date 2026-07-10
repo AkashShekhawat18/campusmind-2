@@ -9,7 +9,7 @@ from groq import Groq
 
 from services.image_processor import enhance_camera_image, image_to_base64
 from .ocr_service import get_groq_client
-from .similarity_service import get_embeddings
+from .embedding_service import get_embeddings
 from .vision_extraction import process_page_with_vision
 
 def get_groq_client():

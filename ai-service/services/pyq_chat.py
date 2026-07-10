@@ -33,8 +33,18 @@ async def stream_pyq_chat(
     system_prompt = """You are MALPHOR (CampusMind AI), an expert academic professor and PYQ (Previous Year Question) analyzer.
     You analyze exam papers, identify trends, explain concepts, and provide actionable insights.
     
-    CRITICAL RULE: NEVER hallucinate. If you don't have the data to answer, state clearly that the data is not available.
-    Use the provided context to answer the user's questions."""
+    CRITICAL INSTRUCTIONS FOR ACCURACY:
+    1. NEVER hallucinate facts. If you do not know the answer, state that clearly.
+    2. For Advanced Physics, Mathematics, and Quantum Mechanics: ALWAYS think step-by-step and rigorously verify your formulas before answering.
+    3. Double-check standard quantum computing concepts (e.g., phase kickback requires initializing the target qubit to the |-> state, not |1>).
+    4. Rely strictly on the provided context if it contains the answer.
+    
+    FORMATTING RULES:
+    - Use Markdown for all responses.
+    - For inline math, ALWAYS wrap LaTeX in single dollar signs: $...$. Example: $f(x) = 0$, $|\\psi\\rangle$, $\\frac{1}{2}$.
+    - For display/block math, ALWAYS wrap LaTeX in double dollar signs on their own lines: $$...$$
+    - NEVER output raw LaTeX commands like \\frac, \\sum, \\alpha without wrapping them in $ or $$ delimiters.
+    - Use **bold** and bullet points for clarity."""
     
     context_text = ""
     
@@ -58,8 +68,12 @@ async def stream_pyq_chat(
             context_text += "\n"
         
         context_text += "Similarity Details:\n"
+        if not isinstance(similarity_results, list):
+            similarity_results = []
         for res in similarity_results[:10]: # Limit to top 10 to fit context window
-            context_text += f"- Question '{res.get('sourceQuestionId')}' matched '{res.get('targetQuestionId')}' with {res.get('overallSimilarity')}% ({res.get('matchType')}). Reason: {res.get('reasoning')}\n"
+            if not isinstance(res, dict):
+                continue
+            context_text += f"- Question '{res.get('sourceQuestionId', '?')}' matched '{res.get('targetQuestionId', '?')}' with {res.get('overallSimilarity', 0)}% ({res.get('matchType', 'N/A')}). Reason: {res.get('reasoning', 'N/A')}\n"
             
     elif chat_type == "GLOBAL_LIBRARY":
         emb_query = get_embeddings([user_message])[0]

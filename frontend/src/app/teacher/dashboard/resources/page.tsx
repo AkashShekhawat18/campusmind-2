@@ -41,6 +41,7 @@ export default function ResourcesPage() {
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterSem, setFilterSem] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
   const token = typeof window !== 'undefined' ? localStorage.getItem('teacherToken') : null;
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
@@ -284,7 +285,8 @@ export default function ResourcesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {resources.map((resource) => (
                   <motion.div key={resource.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                    className={`relative group rounded-xl p-5 border transition-all ${isDark ? 'bg-[#111113] border-white/5 hover:border-white/20' : 'bg-white border-black/5 hover:border-black/20'}`}
+                    className={`relative group rounded-xl p-5 border transition-all cursor-pointer ${isDark ? 'bg-[#111113] border-white/5 hover:border-white/20' : 'bg-white border-black/5 hover:border-black/20'}`}
+                    onClick={() => setPreviewUrl(resource.filePath.startsWith('http') ? resource.filePath : `http://localhost:5000/${resource.filePath}`)}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
@@ -292,17 +294,18 @@ export default function ResourcesPage() {
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <a
-                          href={`http://localhost:5000/${resource.filePath}`}
+                          href={resource.filePath.startsWith('http') ? resource.filePath : `http://localhost:5000/${resource.filePath}`}
                           download
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className={`p-1.5 rounded-md ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`}
                         >
                           <Download size={14} />
                         </a>
                         {currentUserId === resource.uploadedById && (
                           <button
-                            onClick={() => handleDelete(resource.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(resource.id); }}
                             className={`p-1.5 rounded-md ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}
                           >
                             <Trash2 size={14} />
@@ -326,6 +329,20 @@ export default function ResourcesPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* Preview Modal */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setPreviewUrl(null)}>
+          <div className={`relative w-full max-w-5xl h-[85vh] rounded-2xl overflow-hidden border ${isDark ? 'bg-[#111113] border-white/10' : 'bg-white border-black/10'}`} onClick={e => e.stopPropagation()}>
+            <div className={`absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 ${isDark ? 'bg-black/50 backdrop-blur-md' : 'bg-white/50 backdrop-blur-md'}`}>
+              <h3 className="font-semibold text-sm">Document Preview</h3>
+              <button onClick={() => setPreviewUrl(null)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20">
+                Close
+              </button>
+            </div>
+            <iframe src={previewUrl} className="w-full h-full border-none pt-16" title="Document Preview" />
           </div>
         </div>
       )}

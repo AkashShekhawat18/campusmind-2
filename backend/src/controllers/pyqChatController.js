@@ -63,13 +63,13 @@ exports.globalChat = async (req, res) => {
       formattedHistory.push({ role: 'assistant', content: msg.response });
     }
 
-    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/chat/stream`, new URLSearchParams({
+    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/chat/stream`, {
       message: message,
       chat_type: 'GLOBAL_LIBRARY',
-      context_data: JSON.stringify({}),
-      history: JSON.stringify(formattedHistory)
-    }), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      context_data: {},
+      history: formattedHistory
+    }, {
+      headers: { 'Content-Type': 'application/json' },
       responseType: 'stream'
     });
 
@@ -153,21 +153,27 @@ exports.paperChat = async (req, res) => {
       formattedHistory.push({ role: 'assistant', content: msg.response });
     }
 
+    // analysis.similarityResult is stored as {status, analytics, similarityResults: [...]}
+    const storedResult = analysis.similarityResult || {};
+    const innerAnalytics = storedResult.analytics || {};
     const contextData = {
       analytics: {
-        overallRepetitionPercent: analysis.overallRepetition || 0,
+        overallRepetitionPercent: innerAnalytics.overallRepetitionPercent || analysis.overallRepetition || 0,
+        fullyRepeated: innerAnalytics.fullyRepeated || 0,
+        conceptRepeated: innerAnalytics.conceptRepeated || 0,
+        newQuestions: innerAnalytics.newQuestions || 0,
       },
-      similarityResults: analysis.similarityResult,
+      similarityResults: Array.isArray(storedResult.similarityResults) ? storedResult.similarityResults : [],
       currentQuestions: analysis.extractedQuestions
     };
 
-    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/chat/stream`, new URLSearchParams({
+    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/chat/stream`, {
       message: message,
       chat_type: 'PAPER_SPECIFIC',
-      context_data: JSON.stringify(contextData),
-      history: JSON.stringify(formattedHistory)
-    }), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      context_data: contextData,
+      history: formattedHistory
+    }, {
+      headers: { 'Content-Type': 'application/json' },
       responseType: 'stream'
     });
 
@@ -204,8 +210,13 @@ exports.paperChat = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Paper Chat Error:', error);
-    res.status(500).json({ error: 'Failed to process chat' });
+    if (error.response) {
+       console.error('Paper Chat Error Axios:', error.response.status, error.response.data);
+       res.status(500).json({ error: 'Failed to process chat: AI Service returned ' + error.response.status });
+    } else {
+       console.error('Paper Chat Error:', error);
+       res.status(500).json({ error: 'Failed to process chat: ' + error.message });
+    }
   }
 };
 

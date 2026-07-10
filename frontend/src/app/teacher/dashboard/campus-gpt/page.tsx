@@ -126,9 +126,9 @@ export default function TeacherCampusGPT() {
         setAttachedFiles(prev => prev.map(f => f.id === id && f.status === 'uploading' ? { ...f, status: 'extracting' } : f));
       }, 500);
 
-      const res = await fetch('/api/ai/upload', {
+      const res = await fetch('http://localhost:5000/api/ai/upload', {
         method: 'POST',
-        body: formData,
+        body: uploadData
       });
       
       const text = await res.text();
@@ -230,13 +230,17 @@ export default function TeacherCampusGPT() {
       const historyForPython = updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
       formData.append('history', JSON.stringify(historyForPython));
 
-      const res = await fetch('/api/ai/chat/stream', {
+      const res = await fetch('http://localhost:5000/api/ai/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()
       });
 
-      if (!res.ok) throw new Error('Stream failed');
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Stream failed with status", res.status, errText);
+        throw new Error('Stream failed: ' + res.status + ' ' + errText);
+      }
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder('utf-8');

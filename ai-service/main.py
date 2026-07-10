@@ -192,18 +192,22 @@ async def chat_stream(
         print(f"Chat Stream Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+from pydantic import BaseModel
+class PYQChatRequest(BaseModel):
+    message: str
+    chat_type: str
+    context_data: dict = {}
+    history: list = []
+
 @app.post("/api/ai/pyq/chat/stream")
-async def pyq_chat_stream(
-    message: str = Form(...),
-    chat_type: str = Form(...),
-    context_data: str = Form("{}"),
-    history: str = Form("[]")
-):
+async def pyq_chat_stream(request: PYQChatRequest):
     try:
-        import json
-        ctx = json.loads(context_data)
-        hist = json.loads(history)
-        return await stream_pyq_chat(message, chat_type, ctx, hist)
+        return await stream_pyq_chat(
+            request.message, 
+            request.chat_type, 
+            request.context_data, 
+            request.history
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
