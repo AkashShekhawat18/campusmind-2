@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 import os
 import random
 
-from services.vector_service import search_chunks
+from services.vector_service import search_global_pyq
 from services.embedding_service import get_embeddings
 
 def get_groq_client():
@@ -48,17 +48,33 @@ async def stream_pyq_chat(
         context_text += f"Concept Repeated: {paper_stats.get('conceptRepeated', 0)}\n"
         context_text += f"New Questions: {paper_stats.get('newQuestions', 0)}\n\n"
         
+        current_questions = context_data.get("currentQuestions", [])
+        if current_questions:
+            context_text += "Current Paper Questions:\n"
+            for q in current_questions:
+                context_text += f"Q{q.get('questionNo')}: {q.get('questionText')}\n"
+                for img in q.get("images", []):
+                    context_text += f"  -> [Attached Diagram: {img.get('type')}] Description: {img.get('description')}\n"
+            context_text += "\n"
+        
         context_text += "Similarity Details:\n"
         for res in similarity_results[:10]: # Limit to top 10 to fit context window
             context_text += f"- Question '{res.get('sourceQuestionId')}' matched '{res.get('targetQuestionId')}' with {res.get('overallSimilarity')}% ({res.get('matchType')}). Reason: {res.get('reasoning')}\n"
             
     elif chat_type == "GLOBAL_LIBRARY":
-        # In a full production system, we'd do a dynamic RAG search here against the ChromaDB collection of ALL PYQs
-        # For now, we simulate the context retrieval if there are specific filters applied (e.g. searching for 'DBMS trends')
         emb_query = get_embeddings([user_message])[0]
-        # Example pseudo-search (user_id is hardcoded or passed via context)
-        # raw_results = search_similar_chunks("global_pyq_pool", emb_query, top_k=5)
-        context_text = "Context: You have access to the global PYQ library. Analyze trends based on the user's queries."
+        raw_results = search_global_pyq(emb_query, n_results=5)
+        
+        if not raw_results:
+             context_text = "Context: I don't have enough PYQ data for this."
+        else:
+             context_text = "Context: Relevant historical questions retrieved from the Global PYQ Library:\n\n"
+             for i, res in enumerate(raw_results):
+                 meta = res.get("metadata", {})
+                 text = res.get("text", "")
+                 context_text += f"--- Result {i+1} ---\n"
+                 context_text += f"Text: {text}\n"
+                 context_text += f"Marks: {meta.get('marks', 'N/A')} | Topic: {meta.get('topic', 'N/A')} | Concept: {meta.get('meta_concept', 'N/A')}\n\n"
         
     messages = [{"role": "system", "content": system_prompt + "\n\n" + context_text}]
     

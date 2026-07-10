@@ -78,10 +78,12 @@ def calculate_similarity_report(source_q: Dict[str, Any], target_q: Dict[str, An
             "matchType": "EXACT",
             "reasoning": "Identical question detected (same database record).",
             "matchedQuestionText": target_q.get("questionText", ""),
+            "matchedQuestionImages": target_q.get("images", []),
             "originalQuestion": {
                 "questionText": source_q.get("questionText", ""),
                 "marks": source_q.get("marks", 5),
-                "metadata": source_q.get("metadata", {})
+                "metadata": source_q.get("metadata", {}),
+                "images": source_q.get("images", [])
             }
         }
 
@@ -116,10 +118,12 @@ def calculate_similarity_report(source_q: Dict[str, Any], target_q: Dict[str, An
             "matchType": "EXACT",
             "reasoning": f"AI matched question text with {text_ratio*100:.1f}% textual similarity (ignoring minor OCR/extraction variations).",
             "matchedQuestionText": target_q.get("questionText", ""),
+            "matchedQuestionImages": target_q.get("images", []),
             "originalQuestion": {
                 "questionText": source_q.get("questionText", ""),
                 "marks": source_q.get("marks", 5),
-                "metadata": source_q.get("metadata", {})
+                "metadata": source_q.get("metadata", {}),
+                "images": source_q.get("images", [])
             }
         }
         
@@ -163,11 +167,23 @@ def calculate_similarity_report(source_q: Dict[str, Any], target_q: Dict[str, An
     else:
         formula_match = fuzzy_field_match(s_formula, t_formula)
         
-    # Question Pattern (10%) — Fuzzy compare question intent
-    pattern_match = fuzzy_field_match(
+    # Visual Element Match (factor into pattern)
+    s_images = source_q.get("images", [])
+    t_images = target_q.get("images", [])
+    s_img_desc = " ".join([i.get("description", "") for i in s_images])
+    t_img_desc = " ".join([i.get("description", "") for i in t_images])
+    
+    img_sim = fuzzy_field_match(s_img_desc, t_img_desc)
+    
+    # Question Pattern (10%) — Fuzzy compare question intent + Visual Elements
+    intent_match = fuzzy_field_match(
         s_meta.get("questionIntent", ""),
         t_meta.get("questionIntent", "")
     )
+    if s_images or t_images:
+        pattern_match = (intent_match * 0.5) + (img_sim * 0.5)
+    else:
+        pattern_match = intent_match
     
     # Values Match (5%) — Check if numerical values/data in text are the same
     # Use normalized text comparison instead of strict equality
@@ -214,12 +230,14 @@ def calculate_similarity_report(source_q: Dict[str, Any], target_q: Dict[str, An
         "languageSimilarity": round(lang_match * 100, 2),
         "overallSimilarity": overall_percent,
         "matchType": match_type,
-        "reasoning": f"Calculated based on {concept_match*100:.0f}% concept match and {logic_match*100:.0f}% logic match.",
+        "reasoning": f"Calculated based on {concept_match*100:.0f}% concept match, {logic_match*100:.0f}% logic match, and {pattern_match*100:.0f}% pattern/diagram match.",
         "matchedQuestionText": target_q.get("questionText", ""),
+        "matchedQuestionImages": target_q.get("images", []),
         "originalQuestion": {
             "questionText": source_q.get("questionText", ""),
             "marks": source_q.get("marks", 5),
-            "metadata": source_q.get("metadata", {})
+            "metadata": source_q.get("metadata", {}),
+            "images": source_q.get("images", [])
         }
     }
 

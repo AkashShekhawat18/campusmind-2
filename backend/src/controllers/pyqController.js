@@ -60,6 +60,11 @@ exports.uploadPYQ = async (req, res) => {
     
     // 4. Save extracted questions
     const questionPromises = questions.map(q => {
+      const imagesData = (q.images || []).filter(img => img.url).map(img => ({
+        imageUrl: img.url,
+        caption: img.description || img.type
+      }));
+
       return prisma.pYQQuestion.create({
         data: {
           paperId: pyqPaper.id,
@@ -70,6 +75,9 @@ exports.uploadPYQ = async (req, res) => {
           subParts: q.subParts,
           latex: q.latex,
           diagramContext: q.diagramContext,
+          images: {
+            create: imagesData
+          },
           metadata: q.metadata ? {
             create: {
               concept: q.metadata.concept,
@@ -86,6 +94,16 @@ exports.uploadPYQ = async (req, res) => {
     });
     
     await Promise.all(questionPromises);
+    
+    // 5. Index into Vector DB
+    try {
+      await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/index`, {
+        paperId: pyqPaper.id,
+        questions: questions
+      });
+    } catch (indexError) {
+      console.error('Failed to index PYQ to vector DB:', indexError);
+    }
     
     res.status(201).json({ message: 'PYQ Uploaded and Processed successfully', paperId: pyqPaper.id });
   } catch (error) {
@@ -120,6 +138,10 @@ exports.analyzeCurrentPaper = async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
+    
+    // Upload file to Cloudinary for history reference
+    const uploadResult = await uploadToCloudinary(file.buffer, file.originalname);
+    const publicUrl = uploadResult.secure_url;
     
     const form = new FormData();
     form.append('file', file.buffer, file.originalname);
@@ -159,7 +181,25 @@ exports.analyzeCurrentPaper = async (req, res) => {
       historical_pool: formattedPool
     });
     
-    res.status(200).json(simResponse.data);
+    const overallRepetition = simResponse.data.summary?.averageSimilarity || 
+      (simResponse.data.similarityResults.reduce((acc, curr) => acc + curr.overallSimilarity, 0) / (simResponse.data.similarityResults.length || 1));
+
+    const historyRecord = await prisma.pYQAnalysisHistory.create({
+      data: {
+        userId: req.user.id,
+        title: file.originalname,
+        fileUrl: publicUrl,
+        overallRepetition: overallRepetition,
+        status: 'COMPLETED',
+        extractedQuestions: currentQuestions,
+        similarityResult: simResponse.data
+      }
+    });
+    
+    res.status(200).json({
+      ...simResponse.data,
+      analysisId: historyRecord.id
+    });
   } catch (error) {
     console.error('Analyze Paper Error:', error);
     res.status(500).json({ error: 'Failed to analyze paper' });
@@ -176,6 +216,61 @@ exports.replaceQuestion = async (req, res) => {
   } catch (error) {
     console.error('Replace Question Error:', error);
     res.status(500).json({ error: 'Failed to replace question' });
+  }
+};
+
+exports.getAnalysisHistory = async (req, res) => {
+  try {
+    const history = await prisma.pYQAnalysisHistory.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        overallRepetition: true,
+        status: true,
+        createdAt: true,
+        fileUrl: true
+      }
+    });
+    res.status(200).json(history);
+  } catch (error) {
+    console.error('Get Analysis History Error:', error);
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
+};
+
+exports.getAnalysisById = async (req, res) => {
+  try {
+    const record = await prisma.pYQAnalysisHistory.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!record) return res.status(404).json({ error: 'Not found' });
+    if (record.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    
+    res.status(200).json(record);
+  } catch (error) {
+    console.error('Get Analysis By ID Error:', error);
+    res.status(500).json({ error: 'Failed to fetch analysis' });
+  }
+};
+
+exports.deleteAnalysis = async (req, res) => {
+  try {
+    const record = await prisma.pYQAnalysisHistory.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!record) return res.status(404).json({ error: 'Not found' });
+    if (record.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    
+    await prisma.pYQAnalysisHistory.delete({
+      where: { id: req.params.id }
+    });
+    
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Delete Analysis Error:', error);
+    res.status(500).json({ error: 'Failed to delete analysis' });
   }
 };
 

@@ -21,5 +21,18 @@ router.delete('/library/:id', pyqController.deletePYQ);
 router.post('/analyze', upload.single('file'), pyqController.analyzeCurrentPaper);
 router.post('/replace', pyqController.replaceQuestion);
 router.post('/generate-pdf', pyqController.generatePDF);
+router.get('/analysis/history', pyqController.getAnalysisHistory);
+router.get('/analysis/:id', pyqController.getAnalysisById);
+router.delete('/analysis/:id', pyqController.deleteAnalysis);
+const pyqChatController = require('../controllers/pyqChatController');
+
+// Chat endpoints
+router.get('/chat/history/:sessionId', pyqChatController.getChatHistory);
+router.post('/chat/global', pyqChatController.globalChat);
+router.post('/chat/paper/:analysisId', pyqChatController.paperChat);
+router.post('/chat/debug/:analysisId', async (req, res) => {
+  req.user = { id: 'test' }; // mock user
+  await pyqChatController.paperChat(req, res);
+});
 
 module.exports = router;

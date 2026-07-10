@@ -42,6 +42,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   sessions            Session[]
   pyqPapers           PYQPaper[]
+  pyqAnalysisHistories PYQAnalysisHistory[]
+  pyqChatSessions     PyqChatSession[]
   events              Event[]
 
   studentProfile StudentProfile?
@@ -661,3 +663,42 @@ model PYQChatHistory {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
+model PYQAnalysisHistory {
+  id                  String   @id @default(uuid())
+  userId              String
+  title               String   // Typically the filename
+  fileUrl             String
+  overallRepetition   Float?
+  status              String   @default("COMPLETED")
+  extractedQuestions  Json     // Storing the raw AI extracted questions
+  similarityResult    Json     // Storing the 6-dimension match results
+  replacements        Json?    // Storing any generated replacement questions
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PyqChatSession {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   // "GLOBAL" or "PAPER"
+  analysisId String?  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   PyqChatMessage[]
+}
+
+model PyqChatMessage {
+  id                 String   @id @default(uuid())
+  sessionId          String
+  prompt             String
+  response           String
+  retrievedDocuments Json?
+  tokenUsage         Json?
+  timestamp          DateTime @default(now())
+
+  session PyqChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}

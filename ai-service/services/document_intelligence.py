@@ -8,7 +8,9 @@ import random
 from groq import Groq
 
 from services.image_processor import enhance_camera_image, image_to_base64
-from services.embedding_service import get_embeddings
+from .ocr_service import get_groq_client
+from .similarity_service import get_embeddings
+from .vision_extraction import process_page_with_vision
 
 def get_groq_client():
     keys = os.environ.get("GROQ_API_KEYS", "")
@@ -125,21 +127,22 @@ async def process_pyq_document(file_bytes: bytes, filename: str, mime_type: str)
     all_questions = []
     
     if mime_type == "application/pdf" or filename.lower().endswith(".pdf"):
-        # Process PDF page by page to extract text
+        # Process PDF page by page using Gemini Vision for multimodal extraction
         pdf_document = fitz.open(stream=file_bytes, filetype="pdf")
         for page_num in range(len(pdf_document)):
             page = pdf_document.load_page(page_num)
-            text = page.get_text()
+            pix = page.get_pixmap(dpi=150)
+            img_bytes = pix.tobytes("png")
             
-            if text and len(text.strip()) > 10:
-                page_data = process_text_with_llm(text)
-                all_questions.extend(page_data.get("questions", []))
+            questions = process_page_with_vision(img_bytes)
+            all_questions.extend(questions)
             
     elif mime_type.startswith("image/"):
-        raise Exception("Image uploads are temporarily unsupported due to Groq Vision API decommissioning. Please upload a PDF.")
+        questions = process_page_with_vision(file_bytes)
+        all_questions.extend(questions)
         
     if not all_questions:
-        raise Exception("Failed to extract any text or questions from the provided document. Please ensure it is a valid, readable PDF (not purely scanned images) and try again.")
+        raise Exception("Failed to extract any text or questions from the provided document. Please ensure the image/PDF is readable.")
         
     # Now that we have extracted questions, generate fingerprint and embeddings
     processed_questions = []
@@ -153,8 +156,13 @@ async def process_pyq_document(file_bytes: bytes, filename: str, mime_type: str)
         fingerprint = deep_question_understanding(q)
         q["metadata"] = fingerprint
         
-        # 2. Generate Embeddings (Combine text + concept for richer semantic embedding)
-        embed_text = f"Question: {q.get('questionText')} \nConcept: {fingerprint.get('concept')} \nLogic: {fingerprint.get('logic')}"
+        # 2. Generate Embeddings (Combine text + concept + image description for richer semantic embedding)
+        image_desc = ""
+        for img in q.get("images", []):
+            if img.get("description"):
+                image_desc += f"\nVisual Element ({img.get('type')}): {img['description']}"
+                
+        embed_text = f"Question: {q.get('questionText')} \nConcept: {fingerprint.get('concept')} \nLogic: {fingerprint.get('logic')} {image_desc}"
         
         # Assuming get_embeddings returns a list of embeddings, we pass a list of 1 text
         emb_list = get_embeddings([embed_text])
