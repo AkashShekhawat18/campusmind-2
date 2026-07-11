@@ -386,10 +386,10 @@ export default function TeacherPYQAnalyzer() {
                       </div>
                     )}
                     
-                    <p className={`text-sm border-l-2 pl-4 py-1 ${isDark ? 'border-white/20' : 'border-black/20'}`}>
+                    <div className={`text-sm border-l-2 pl-4 py-1 ${isDark ? 'border-white/20' : 'border-black/20'}`}>
                       <span className="font-semibold opacity-70">AI Reasoning: </span>
-                      {res.reasoning}
-                    </p>
+                      <LatexText>{res.reasoning}</LatexText>
+                    </div>
                   </div>
                   
                   <div className={`w-full md:w-64 space-y-3 p-4 rounded-xl border ${isDark ? 'bg-black/20 border-white/5' : 'bg-black/5 border-black/5'}`}>
@@ -425,13 +425,13 @@ export default function TeacherPYQAnalyzer() {
                         <h6 className="font-semibold text-emerald-600 mb-2 flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4" /> New AI Question
                         </h6>
-                        <p className="text-sm mb-3">{replacements[idx].text}</p>
+                        <div className="text-sm mb-3"><LatexText>{replacements[idx].text}</LatexText></div>
                         {replacements[idx].reasoning && (
-                          <p className="text-xs opacity-70 italic border-t border-emerald-500/20 pt-2 mb-2">Reasoning: {replacements[idx].reasoning}</p>
+                          <div className="text-xs opacity-70 italic border-t border-emerald-500/20 pt-2 mb-2">Reasoning: <LatexText>{replacements[idx].reasoning}</LatexText></div>
                         )}
                         <div className={`mt-2 p-2 rounded bg-black/5 text-xs opacity-80 border-l-2 border-emerald-500/50`}>
                           <span className="font-semibold block mb-1">Replaced Question:</span>
-                          <p className="truncate mb-1">{res.originalQuestion?.questionText}</p>
+                          <div className="truncate mb-1"><LatexText>{res.originalQuestion?.questionText || ''}</LatexText></div>
                           <p className="font-mono text-[10px]">
                             Concept: {res.originalQuestion?.metadata?.concept || 'N/A'} | 
                             Difficulty: {res.originalQuestion?.metadata?.difficulty || 'N/A'} | 

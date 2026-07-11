@@ -41,11 +41,14 @@ def generate_question_replacement(original_question: Dict[str, Any]) -> Dict[str
     2. Must have the EXACT SAME difficulty level.
     3. Must be worth the EXACT SAME marks ({marks}).
     4. Must use DIFFERENT logic, values, or framing so it is not a blind repetition.
-    5. If applicable, include LaTeX math equations using $...$ and $$...$$.
+    5. For ALL math expressions, use LaTeX with proper delimiters:
+       - Inline math: $...$ (e.g. $f(x) = 0$, $|\\psi\\rangle$)
+       - Display math: $$...$$ on its own line
+       - NEVER output raw LaTeX commands without dollar sign delimiters.
     
     Return a JSON object:
     {{
-        "replacementText": "The new question text",
+        "replacementText": "The new question text with $LaTeX$ math properly delimited",
         "reasoning": "Why this is a good substitute"
     }}
     """

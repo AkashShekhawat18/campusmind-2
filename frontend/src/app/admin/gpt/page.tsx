@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { History, Settings2, Save, User, MessageSquare, Bot } from 'lucide-react';
+import LatexText from '@/components/LatexText';
 
 interface ChatMessage {
   id: string;
@@ -179,7 +180,7 @@ export default function AdminGPTPage() {
                             </div>
                           )}
                           <div className={`p-4 rounded-2xl max-w-[80%] text-sm ${msg.role === 'user' ? 'bg-blue-600/20 text-blue-100 border border-blue-500/30 rounded-tr-none' : 'bg-white/5 text-gray-300 border border-white/10 rounded-tl-none'}`}>
-                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                            <div className="whitespace-pre-wrap"><LatexText>{msg.content}</LatexText></div>
                             <div className={`text-[10px] mt-2 opacity-50 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                               {new Date(msg.createdAt).toLocaleTimeString()}
                             </div>
