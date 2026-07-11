@@ -262,6 +262,9 @@ export default function StudentCampusGPT() {
                 if (data.type === 'token' && data.content) {
                   streamedResponse += data.content;
                   setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: streamedResponse } : m));
+                } else if (data.type === 'error') {
+                  setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: `Error: ${data.content}` } : m));
+                  break;
                 }
               } catch (e) {
                 // Ignore parse errors on incomplete chunks

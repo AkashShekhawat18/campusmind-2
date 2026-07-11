@@ -32,9 +32,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModelId, o
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     fetchModels();
     
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,6 +87,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModelId, o
   );
 
   const categories = Array.from(new Set(filteredModels.map(m => m.category)));
+
+  if (!mounted) {
+    return (
+      <div className="relative">
+        <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl border backdrop-blur-md transition-all duration-300 bg-white/5 border-white/10 text-white opacity-50">
+          <span className="text-sm font-medium truncate max-w-[150px]">Loading...</span>
+          <ChevronDown size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  const isDark = resolvedTheme === 'dark';
 
   return (
     <div className="relative" ref={dropdownRef}>

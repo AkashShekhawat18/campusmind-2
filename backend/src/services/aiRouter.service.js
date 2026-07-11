@@ -19,9 +19,20 @@ const getProviderKey = async (provider) => {
     });
     return selectedKey.apiKey;
   }
-  
   // Fallback to env vars if no DB keys
-  return process.env[`${provider.toUpperCase()}_API_KEY`];
+  let envKey = process.env[`${provider.toUpperCase()}_API_KEY`];
+  if (!envKey) {
+    const pluralKeys = process.env[`${provider.toUpperCase()}_API_KEYS`];
+    if (pluralKeys) {
+      envKey = pluralKeys.split(',')[0].trim();
+    }
+  }
+  
+  if (envKey) {
+    envKey = envKey.replace(/^["']|["']$/g, '');
+  }
+  
+  return envKey;
 };
 
 // Route and stream to the selected model
@@ -163,7 +174,7 @@ const streamResponse = async (req, res, modelConfig, messages) => {
 
   } catch (err) {
     console.error("AI Router Stream Error:", err.message || err);
-    res.write(`data: ${JSON.stringify({ type: 'error', content: 'An error occurred while generating the response.' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'error', content: err.message || 'An error occurred while generating the response.' })}\n\n`);
     res.end();
     return { error: err.message };
   }

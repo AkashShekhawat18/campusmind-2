@@ -95,9 +95,9 @@ async function main() {
     },
     {
       provider: 'Groq',
-      modelName: 'gemma2-9b-it',
-      displayName: 'Gemma 2 9B (Free)',
-      description: 'Fast, lightweight model for simple tasks.',
+      modelName: 'llama-3.1-8b-instant',
+      displayName: 'Llama 3.1 8B (Free)',
+      description: 'Fast, lightweight Llama model for quick responses and simple tasks.',
       category: 'External Models',
       enabled: true,
       premium: false,
