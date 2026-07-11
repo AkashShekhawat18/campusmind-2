@@ -1,6 +1,7 @@
 const prisma = require('../utils/prisma');
 const Groq = require('groq-sdk');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 
 // Fetch the best API key for a provider (Round Robin based on lastUsed)
@@ -82,6 +83,30 @@ const streamResponse = async (req, res, modelConfig, messages) => {
         const chunkText = chunk.text();
         tokens += chunkText.length / 4;
         res.write(`data: ${JSON.stringify({ type: 'token', content: chunkText })}\n\n`);
+      }
+    }
+    else if (provider.toLowerCase() === 'anthropic') {
+      const anthropic = new Anthropic({ apiKey });
+      
+      const systemMessage = messages.find(m => m.role === 'system')?.content || '';
+      const chatHistory = messages.filter(m => m.role !== 'system');
+
+      const stream = await anthropic.messages.create({
+        model: modelName,
+        max_tokens: 4096,
+        system: systemMessage,
+        messages: chatHistory.map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        stream: true
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+          tokens += 1;
+          res.write(`data: ${JSON.stringify({ type: 'token', content: chunk.delta.text })}\n\n`);
+        }
       }
     }
     else {
