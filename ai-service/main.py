@@ -173,23 +173,20 @@ async def index_pyq(
     except Exception as e:
         print(f"Index PYQ Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/api/ai/chat/stream")
-async def chat_stream(
+@app.post("/api/ai/context")
+async def get_context(
     message: str = Form(...),
-    user_id: str = Form(...),
-    chat_id: Optional[str] = Form(None),
-    history: str = Form("[]"), # JSON string of history
+    user_id: str = Form(...)
 ):
     """
-    Stream response using RAG: Retrieve context -> Assemble prompt -> Stream Groq response.
+    Retrieve RAG context for a user message.
     """
     try:
-        import json
-        history_list = json.loads(history)
-        from services.chat_service import handle_chat_stream
-        return await handle_chat_stream(message, user_id, chat_id, history_list)
+        from services.retrieval_service import retrieve_context
+        context = retrieve_context(message, user_id, top_k=5)
+        return {"status": "success", "context": context}
     except Exception as e:
-        print(f"Chat Stream Error: {e}")
+        print(f"Context Retrieval Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 from pydantic import BaseModel

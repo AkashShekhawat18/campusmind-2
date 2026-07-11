@@ -15,6 +15,8 @@ import {
   FileSpreadsheet, Presentation, FileCode, File, XCircle, Loader2, CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import { ModelSelector } from '@/components/chat/ModelSelector';
+import { PremiumLockPopup } from '@/components/chat/PremiumLockPopup';
 
 type UploadStatus = 'uploading' | 'extracting' | 'ready' | 'error';
 
@@ -64,6 +66,8 @@ export default function StudentCampusGPT() {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string>('auto');
+  const [showPremiumLock, setShowPremiumLock] = useState(false);
   
   // Advanced Upload States
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
@@ -225,12 +229,13 @@ export default function StudentCampusGPT() {
       const formData = new URLSearchParams();
       formData.append('message', userMsg.content);
       formData.append('user_id', userId!);
+      formData.append('model_id', selectedModelId);
       if (currentChatId) formData.append('chat_id', currentChatId);
       
       const historyForPython = updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
       formData.append('history', JSON.stringify(historyForPython));
 
-      const res = await fetch('/api/ai/chat/stream', {
+      const res = await fetch('/api/ai-router/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()
@@ -330,10 +335,19 @@ export default function StudentCampusGPT() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleModelSelect = (id: string, isPremium: boolean) => {
+    if (isPremium && !token) {
+      setShowPremiumLock(true);
+      return;
+    }
+    setSelectedModelId(id);
+  };
+
   const filteredChats = chats.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className={`flex h-[calc(100vh-3.5rem)] overflow-hidden ${isDark ? 'bg-[#0a0a0c]' : 'bg-[#f0f0f5]'}`} {...getRootProps()}>
+      <PremiumLockPopup isOpen={showPremiumLock} onClose={() => setShowPremiumLock(false)} />
       <input title="File upload" placeholder="Upload files" aria-label="Upload files" {...getInputProps()} />
       {/* Drag Overlay */}
       <AnimatePresence>
@@ -502,6 +516,10 @@ export default function StudentCampusGPT() {
 
                       {msg.role === 'assistant' ? (
                         <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                          {/* Display the badge (using model_id from msg if available or just generic for now as requested) */}
+                          <div className="text-[10px] uppercase font-bold tracking-wide opacity-50 mb-2 flex items-center gap-1">
+                             <Bot size={10} /> Answered by AI
+                          </div>
                           {msg.content === '' ? (
                             <span className="animate-pulse">Thinking...</span>
                           ) : (
@@ -618,42 +636,51 @@ export default function StudentCampusGPT() {
               </div>
             )}
 
-            {/* Chat Input Bar */}
-            <div className={`relative flex items-center rounded-2xl border shadow-lg overflow-hidden ${
-              isDark ? 'bg-[#1a1a1c] border-white/10 shadow-black/50' : 'bg-white border-black/10 shadow-black/5'
-            } focus-within:ring-1 focus-within:ring-blue-500/50 transition-shadow p-1.5`}>
+            {/* Chat Input Bar and Model Selector */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center px-1">
+                <ModelSelector selectedModelId={selectedModelId} onModelSelect={handleModelSelect} />
+                <div className="text-[10px] opacity-40 font-medium tracking-wide uppercase">
+                  Powered by CampusMind AI Router
+                </div>
+              </div>
               
-              <button
-                onClick={open}
-                className={`p-2.5 rounded-xl transition-all opacity-60 hover:opacity-100 ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
-                title="Attach files (PDF, DOCX, Excel, Images)"
-              >
-                <Plus size={20} />
-              </button>
+              <div className={`relative flex items-center rounded-2xl border shadow-lg overflow-hidden ${
+                isDark ? 'bg-[#1a1a1c] border-white/10 shadow-black/50' : 'bg-white border-black/10 shadow-black/5'
+              } focus-within:ring-1 focus-within:ring-blue-500/50 transition-shadow p-1.5`}>
+                
+                <button
+                  onClick={open}
+                  className={`p-2.5 rounded-xl transition-all opacity-60 hover:opacity-100 ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                  title="Attach files (PDF, DOCX, Excel, Images)"
+                >
+                  <Plus size={20} />
+                </button>
 
-              <input
-                title="Chat input"
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask CampusGPT anything or drop files here..."
-                className="flex-1 bg-transparent border-none outline-none px-3 py-3 text-[15px]"
-              />
-              
-              <button
-                title="Send message"
-                aria-label="Send message"
-                onClick={handleSend}
-                disabled={(!input.trim() && attachedFiles.filter(f => f.status === 'ready').length === 0) || isTyping || isUploadingAny}
-                className={`p-3 rounded-xl transition-all flex items-center gap-2 ${
-                  (input.trim() || attachedFiles.filter(f => f.status === 'ready').length > 0) && !isTyping && !isUploadingAny
-                    ? (isDark ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800')
-                    : 'opacity-30 cursor-not-allowed'
-                }`}
-              >
-                <Send size={18} />
-              </button>
+                <input
+                  title="Chat input"
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Ask CampusGPT anything or drop files here..."
+                  className="flex-1 bg-transparent border-none outline-none px-3 py-3 text-[15px]"
+                />
+                
+                <button
+                  title="Send message"
+                  aria-label="Send message"
+                  onClick={handleSend}
+                  disabled={(!input.trim() && attachedFiles.filter(f => f.status === 'ready').length === 0) || isTyping || isUploadingAny}
+                  className={`p-3 rounded-xl transition-all flex items-center gap-2 ${
+                    (input.trim() || attachedFiles.filter(f => f.status === 'ready').length > 0) && !isTyping && !isUploadingAny
+                      ? (isDark ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800')
+                      : 'opacity-30 cursor-not-allowed'
+                  }`}
+                >
+                  <Send size={18} />
+                </button>
+              </div>
             </div>
             <div className="text-center mt-3 text-xs opacity-40">
               CampusGPT Teacher Mode • Powered by Groq + ChromaDB RAG

@@ -304,17 +304,53 @@ model Chat {
 }
 
 model Message {
-  id             String   @id @default(uuid())
-  chatId         String
-  role           String   // user, assistant
-  content        String
-  fileReferences String?  // JSON
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now()) @updatedAt
+  id                 String   @id @default(uuid())
+  chatId             String
+  role               String   // user, assistant
+  content            String
+  fileReferences     String?  // JSON
+  modelUsed          String?
+  provider           String?
+  tokens             Int?
+  latency            Int?
+  retrievedDocuments Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
   
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([chatId])
+}
+
+model AIModel {
+  id           String   @id @default(uuid())
+  provider     String   // 'Groq', 'OpenAI', 'Google', 'Anthropic', 'CampusMind'
+  modelName    String
+  displayName  String
+  description  String?
+  category     String   @default("External Models")
+  enabled      Boolean  @default(true)
+  premium      Boolean  @default(false)
+  vision       Boolean  @default(false)
+  reasoning    Boolean  @default(false)
+  coding       Boolean  @default(false)
+  pdf          Boolean  @default(false)
+  math         Boolean  @default(false)
+  priority     Int      @default(0)
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model AIProviderKey {
+  id        String   @id @default(uuid())
+  provider  String
+  apiKey    String
+  isActive  Boolean  @default(true)
+  lastUsed  DateTime?
+  errorCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 

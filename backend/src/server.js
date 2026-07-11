@@ -57,6 +57,9 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 // Routes
 const adminRoutes = require('./routes/adminRoutes');
 const adminERPRoutes = require('./routes/adminERPRoutes');
+const modelRoutes = require('./routes/modelRoutes');
+const aiRouterRoutes = require('./routes/aiRouterRoutes');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/voice', voiceRoutes);
@@ -65,6 +68,8 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/erp', adminERPRoutes);
 app.use('/api/pyq', pyqRoutes);
+app.use('/api/models', modelRoutes);
+app.use('/api/ai-router', aiRouterRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
