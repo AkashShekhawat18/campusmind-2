@@ -17,6 +17,7 @@ const navItems = [
   { name: 'Programs & Branches', href: '/admin/erp/programs', icon: GraduationCap },
   { name: 'Academics', href: '/admin/erp/semesters', icon: CalendarDays },
   { name: 'Campus GPT', href: '/admin/gpt', icon: BrainCircuit },
+  { name: 'AI Marketplace', href: '/admin/ai-marketplace', icon: BrainCircuit },
   { name: 'Notifications', href: '/admin/notifications', icon: Bell },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];

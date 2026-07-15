@@ -34,9 +34,13 @@ const getWeatherDetails = (code: number) => {
 };
 
 const fetchIpLocation = async () => {
-  const res = await fetch('https://ipwho.is/');
-  if (!res.ok) throw new Error('IP lookup failed');
-  return await res.json();
+  try {
+    const res = await fetch('https://ipwho.is/');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
 };
 
 const fetchWeather = async (lat: number, lon: number, city: string): Promise<WeatherData | null> => {
@@ -126,7 +130,12 @@ const WeatherWidgetBase = () => {
           async () => {
             try {
               const ipInfo = await fetchIpLocation();
-              await getLocationAndWeather(ipInfo.latitude, ipInfo.longitude, ipInfo.city || 'Unknown');
+              if (ipInfo && ipInfo.latitude && ipInfo.longitude) {
+                await getLocationAndWeather(ipInfo.latitude, ipInfo.longitude, ipInfo.city || 'Unknown');
+              } else {
+                setError(true);
+                setLoading(false);
+              }
             } catch (err) {
               console.error("Weather fetch error (ip):", err);
               setError(true);
@@ -137,7 +146,12 @@ const WeatherWidgetBase = () => {
         );
       } else {
         const ipInfo = await fetchIpLocation();
-        await getLocationAndWeather(ipInfo.latitude, ipInfo.longitude, ipInfo.city || 'Unknown');
+        if (ipInfo && ipInfo.latitude && ipInfo.longitude) {
+          await getLocationAndWeather(ipInfo.latitude, ipInfo.longitude, ipInfo.city || 'Unknown');
+        } else {
+          setError(true);
+          setLoading(false);
+        }
       }
     } catch (err) {
       console.error("Weather fetch error:", err);

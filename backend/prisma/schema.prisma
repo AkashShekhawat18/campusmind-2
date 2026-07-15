@@ -322,35 +322,67 @@ model Message {
   @@index([chatId])
 }
 
-model AIModel {
-  id           String   @id @default(uuid())
-  provider     String   // 'Groq', 'OpenAI', 'Google', 'Anthropic', 'CampusMind'
-  modelName    String
-  displayName  String
-  description  String?
-  category     String   @default("External Models")
-  enabled      Boolean  @default(true)
-  premium      Boolean  @default(false)
-  vision       Boolean  @default(false)
-  reasoning    Boolean  @default(false)
-  coding       Boolean  @default(false)
-  pdf          Boolean  @default(false)
-  math         Boolean  @default(false)
-  priority     Int      @default(0)
-  status       String   @default("ACTIVE")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now()) @updatedAt
+model AIProvider {
+  id                String   @id @default(uuid())
+  providerName      String
+  providerSlug      String   @unique
+  providerType      String   @default("Cloud") // Cloud, Local, OpenRouter
+  apiBaseUrl        String?
+  documentationUrl  String?
+  status            String   @default("Healthy") // Healthy, Slow, Offline
+  enabled           Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt
+
+  models            AIModel[]
+  apiKeys           ProviderAPIKey[]
 }
 
-model AIProviderKey {
-  id        String   @id @default(uuid())
-  provider  String
-  apiKey    String
-  isActive  Boolean  @default(true)
-  lastUsed  DateTime?
-  errorCount Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+model AIModel {
+  id                       String   @id @default(uuid())
+  providerId               String
+  displayName              String
+  modelName                String
+  description              String?
+  supportsChat             Boolean  @default(true)
+  supportsVision           Boolean  @default(false)
+  supportsPdf              Boolean  @default(false)
+  supportsAudio            Boolean  @default(false)
+  supportsVideo            Boolean  @default(false)
+  supportsStreaming        Boolean  @default(true)
+  supportsReasoning        Boolean  @default(false)
+  supportsFunctionCalling  Boolean  @default(false)
+  supportsLongContext      Boolean  @default(false)
+  premium                  Boolean  @default(false)
+  enabled                  Boolean  @default(true)
+  priority                 Int      @default(0)
+  maxTokens                Int      @default(4096)
+  temperature              Float    @default(0.7)
+  costInput                Float    @default(0.0) // Cost per 1M input tokens
+  costOutput               Float    @default(0.0) // Cost per 1M output tokens
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @default(now()) @updatedAt
+
+  provider                 AIProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model ProviderAPIKey {
+  id               String   @id @default(uuid())
+  providerId       String
+  keyName          String
+  encryptedApiKey  String
+  active           Boolean  @default(true)
+  usageCount       Int      @default(0)
+  dailyLimit       Int      @default(1000)
+  monthlyLimit     Int      @default(10000)
+  requestsToday    Int      @default(0)
+  requestsMonth    Int      @default(0)
+  lastUsed         DateTime?
+  status           String   @default("Active") // Active, RateLimited, Invalid
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  provider         AIProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 }
 
 

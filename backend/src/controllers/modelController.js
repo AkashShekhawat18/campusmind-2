@@ -4,12 +4,30 @@ const getModels = async (req, res) => {
   try {
     const models = await prisma.aIModel.findMany({
       where: { enabled: true },
+      include: { provider: true },
       orderBy: [
-        { category: 'asc' },
         { priority: 'desc' },
       ],
     });
-    res.json(models);
+
+    const formattedModels = models.map(m => ({
+      id: m.id,
+      provider: m.provider.providerName,
+      modelName: m.modelName,
+      displayName: m.displayName,
+      description: m.description,
+      category: m.provider.providerName + ' Models',
+      enabled: m.enabled,
+      premium: m.premium,
+      vision: m.supportsVision,
+      reasoning: m.supportsReasoning,
+      coding: m.supportsFunctionCalling,
+      pdf: m.supportsPdf,
+      math: m.supportsReasoning, // Map reasoning to math for UI
+      status: 'ACTIVE'
+    }));
+
+    res.json(formattedModels);
   } catch (error) {
     console.error('Error fetching models:', error);
     res.status(500).json({ error: 'Failed to fetch AI models' });
@@ -19,12 +37,30 @@ const getModels = async (req, res) => {
 const getAllModelsAdmin = async (req, res) => {
   try {
     const models = await prisma.aIModel.findMany({
+      include: { provider: true },
       orderBy: [
-        { category: 'asc' },
         { priority: 'desc' },
       ],
     });
-    res.json(models);
+    
+    const formattedModels = models.map(m => ({
+      id: m.id,
+      provider: m.provider.providerName,
+      modelName: m.modelName,
+      displayName: m.displayName,
+      description: m.description,
+      category: m.provider.providerName + ' Models',
+      enabled: m.enabled,
+      premium: m.premium,
+      vision: m.supportsVision,
+      reasoning: m.supportsReasoning,
+      coding: m.supportsFunctionCalling,
+      pdf: m.supportsPdf,
+      math: m.supportsReasoning, // Map reasoning to math for UI
+      status: 'ACTIVE'
+    }));
+    
+    res.json(formattedModels);
   } catch (error) {
     console.error('Error fetching admin models:', error);
     res.status(500).json({ error: 'Failed to fetch AI models' });

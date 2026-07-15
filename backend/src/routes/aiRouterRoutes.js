@@ -10,7 +10,7 @@ router.post('/stream', async (req, res) => {
     const { message, user_id, chat_id, history, model_id } = req.body;
     
     // 1. Get model config
-    const modelConfig = await getModelConfig(model_id);
+    const modelConfig = await getModelConfig(model_id, message);
 
     // 2. Fetch context from Python RAG service
     let contextData = [];

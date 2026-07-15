@@ -59,6 +59,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const adminERPRoutes = require('./routes/adminERPRoutes');
 const modelRoutes = require('./routes/modelRoutes');
 const aiRouterRoutes = require('./routes/aiRouterRoutes');
+const marketplaceRoutes = require('./routes/marketplaceRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
@@ -70,6 +71,7 @@ app.use('/api/admin/erp', adminERPRoutes);
 app.use('/api/pyq', pyqRoutes);
 app.use('/api/models', modelRoutes);
 app.use('/api/ai-router', aiRouterRoutes);
+app.use('/api/admin/marketplace', marketplaceRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

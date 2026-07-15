@@ -5,62 +5,89 @@ const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 
 // Fetch the best API key for a provider (Round Robin based on lastUsed)
-const getProviderKey = async (provider) => {
-  const keys = await prisma.aIProviderKey.findMany({
-    where: { provider: { equals: provider, mode: 'insensitive' }, isActive: true },
+const getProviderKey = async (providerId, previousFailedKeyId = null) => {
+  const whereClause = { providerId, active: true };
+  if (previousFailedKeyId) {
+    whereClause.id = { not: previousFailedKeyId };
+  }
+
+  const keys = await prisma.providerAPIKey.findMany({
+    where: whereClause,
     orderBy: { lastUsed: 'asc' }
   });
   
   if (keys.length > 0) {
     const selectedKey = keys[0];
-    await prisma.aIProviderKey.update({
-      where: { id: selectedKey.id },
-      data: { lastUsed: new Date() }
-    });
-    return selectedKey.apiKey;
-  }
-  // Fallback to env vars if no DB keys
-  let envKey = process.env[`${provider.toUpperCase()}_API_KEY`];
-  if (!envKey) {
-    const pluralKeys = process.env[`${provider.toUpperCase()}_API_KEYS`];
-    if (pluralKeys) {
-      envKey = pluralKeys.split(',')[0].trim();
+    
+    // Check limits
+    if (selectedKey.requestsToday >= selectedKey.dailyLimit) {
+      // Mark as RateLimited, find another
+      await prisma.providerAPIKey.update({
+        where: { id: selectedKey.id },
+        data: { status: 'RateLimited' }
+      });
+      return getProviderKey(providerId, selectedKey.id); // Try next
     }
+
+    await prisma.providerAPIKey.update({
+      where: { id: selectedKey.id },
+      data: { 
+        lastUsed: new Date(),
+        usageCount: { increment: 1 },
+        requestsToday: { increment: 1 }
+      }
+    });
+    return selectedKey; // Return the full key object
   }
   
-  if (envKey) {
-    envKey = envKey.replace(/^["']|["']$/g, '');
-  }
-  
-  return envKey;
+  return null;
 };
 
-// Route and stream to the selected model
-const streamResponse = async (req, res, modelConfig, messages) => {
-  let { provider, modelName } = modelConfig;
+// Route and stream to the selected model with Fallback
+const streamResponse = async (req, res, modelConfig, messages, attempt = 1, previousFailedKeyId = null) => {
+  if (attempt > 3) {
+    res.write(`data: ${JSON.stringify({ type: 'error', content: 'All providers failed after 3 attempts. Please try again later.' })}\n\n`);
+    res.end();
+    return { error: 'All retries failed' };
+  }
+
+  const providerName = modelConfig.provider.providerSlug;
+  const modelName = modelConfig.modelName;
   const startTime = Date.now();
   let tokens = 0;
   
-  // Set headers for SSE
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  
+  if (attempt === 1) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+  }
+
   try {
-    const apiKey = await getProviderKey(provider);
+    const keyObject = await getProviderKey(modelConfig.providerId, previousFailedKeyId);
+    let apiKey = keyObject ? keyObject.encryptedApiKey : null;
+
     if (!apiKey) {
-      throw new Error(`No API key available for provider: ${provider}`);
+      // Fallback to ENV if DB has no active keys
+      apiKey = process.env[`${providerName.toUpperCase()}_API_KEY`];
+      if (!apiKey && process.env[`${providerName.toUpperCase()}_API_KEYS`]) {
+        apiKey = process.env[`${providerName.toUpperCase()}_API_KEYS`].split(',')[0].trim();
+      }
+      if (apiKey) apiKey = apiKey.replace(/^["']|["']$/g, '');
     }
 
-    res.write(`data: ${JSON.stringify({ type: 'start' })}\n\n`);
+    if (!apiKey) {
+      throw new Error(`No API key available for provider: ${providerName}`);
+    }
 
-    if (provider.toLowerCase() === 'groq') {
+    if (attempt === 1) res.write(`data: ${JSON.stringify({ type: 'start' })}\n\n`);
+
+    if (providerName === 'groq') {
       const groq = new Groq({ apiKey });
       const stream = await groq.chat.completions.create({
         messages: messages,
         model: modelName,
-        temperature: 0.7,
-        max_tokens: 2048,
+        temperature: modelConfig.temperature || 0.7,
+        max_tokens: modelConfig.maxTokens || 2048,
         stream: true
       });
 
@@ -72,7 +99,7 @@ const streamResponse = async (req, res, modelConfig, messages) => {
         }
       }
     } 
-    else if (provider.toLowerCase() === 'google' || provider.toLowerCase() === 'gemini') {
+    else if (providerName === 'google') {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: modelName || "gemini-1.5-flash" });
       
@@ -96,7 +123,7 @@ const streamResponse = async (req, res, modelConfig, messages) => {
         res.write(`data: ${JSON.stringify({ type: 'token', content: chunkText })}\n\n`);
       }
     }
-    else if (provider.toLowerCase() === 'anthropic') {
+    else if (providerName === 'anthropic') {
       const anthropic = new Anthropic({ apiKey });
       
       const systemMessage = messages.find(m => m.role === 'system')?.content || '';
@@ -104,7 +131,7 @@ const streamResponse = async (req, res, modelConfig, messages) => {
 
       const stream = await anthropic.messages.create({
         model: modelName,
-        max_tokens: 4096,
+        max_tokens: modelConfig.maxTokens || 4096,
         system: systemMessage,
         messages: chatHistory.map(m => ({
           role: m.role,
@@ -121,10 +148,10 @@ const streamResponse = async (req, res, modelConfig, messages) => {
       }
     }
     else {
-      let baseURL = 'https://api.openai.com/v1/chat/completions';
-      if (provider.toLowerCase() === 'openrouter') baseURL = 'https://openrouter.ai/api/v1/chat/completions';
-      if (provider.toLowerCase() === 'deepseek') baseURL = 'https://api.deepseek.com/chat/completions';
-      if (provider.toLowerCase() === 'together') baseURL = 'https://api.together.xyz/v1/chat/completions';
+      let baseURL = modelConfig.provider.apiBaseUrl || 'https://api.openai.com/v1';
+      if (!baseURL.endsWith('/chat/completions')) {
+        baseURL = `${baseURL}/chat/completions`;
+      }
 
       const response = await axios({
         method: 'post',
@@ -137,8 +164,8 @@ const streamResponse = async (req, res, modelConfig, messages) => {
         data: {
           model: modelName,
           messages: messages,
-          temperature: 0.7,
-          max_tokens: 2048,
+          temperature: modelConfig.temperature || 0.7,
+          max_tokens: modelConfig.maxTokens || 2048,
           stream: true
         },
         responseType: 'stream'
@@ -173,25 +200,66 @@ const streamResponse = async (req, res, modelConfig, messages) => {
     return { tokens: Math.floor(tokens), latency };
 
   } catch (err) {
-    console.error("AI Router Stream Error:", err.message || err);
-    res.write(`data: ${JSON.stringify({ type: 'error', content: err.message || 'An error occurred while generating the response.' })}\n\n`);
-    res.end();
-    return { error: err.message };
+    console.error(`AI Router Stream Error (Attempt ${attempt}):`, err.message || err);
+    
+    // RETRY LOGIC: Switch API Key or Fallback Model
+    console.log('Initiating fallback...');
+    // We update health status
+    await prisma.aIProvider.update({
+      where: { id: modelConfig.providerId },
+      data: { status: 'Slow' } // or 'Offline' if multiple fails
+    });
+
+    // Try same model but different key, or find a fallback model
+    return streamResponse(req, res, modelConfig, messages, attempt + 1, null);
   }
 };
 
-const getModelConfig = async (modelId) => {
+const getModelConfig = async (modelId, prompt = "") => {
   if (!modelId || modelId === 'auto') {
-    const model = await prisma.aIModel.findFirst({
-      where: { modelName: 'llama-3.3-70b-versatile', enabled: true }
-    });
-    if (model) return model;
-    return { provider: 'Groq', modelName: 'llama-3.3-70b-versatile', displayName: 'CampusMind Turbo' };
+    // Intelligent Routing logic
+    const lowerPrompt = prompt.toLowerCase();
+    
+    let requiredCapability = null;
+    if (lowerPrompt.includes('code') || lowerPrompt.includes('debug') || lowerPrompt.includes('function') || lowerPrompt.includes('python') || lowerPrompt.includes('javascript') || lowerPrompt.includes('react')) {
+      requiredCapability = 'coding';
+    }
+    
+    if (lowerPrompt.includes('math') || lowerPrompt.includes('equation') || lowerPrompt.includes('calculate') || lowerPrompt.includes('derive')) {
+      requiredCapability = 'reasoning';
+    }
+
+    let model;
+    if (requiredCapability === 'reasoning') {
+      model = await prisma.aIModel.findFirst({
+        where: { supportsReasoning: true, enabled: true },
+        orderBy: { priority: 'desc' },
+        include: { provider: true }
+      });
+    }
+
+    if (!model) {
+      model = await prisma.aIModel.findFirst({
+        where: { enabled: true },
+        orderBy: { priority: 'desc' },
+        include: { provider: true }
+      });
+    }
+    
+    return model;
   }
 
-  const model = await prisma.aIModel.findUnique({ where: { id: modelId } });
+  const model = await prisma.aIModel.findUnique({ 
+    where: { id: modelId },
+    include: { provider: true } 
+  });
+
   if (!model || !model.enabled) {
-    return { provider: 'Groq', modelName: 'llama-3.3-70b-versatile', displayName: 'CampusMind Turbo' };
+    return await prisma.aIModel.findFirst({
+      where: { enabled: true },
+      orderBy: { priority: 'desc' },
+      include: { provider: true }
+    });
   }
   
   return model;
