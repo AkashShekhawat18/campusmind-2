@@ -12,10 +12,12 @@ export interface BoundingBox {
 export function useSafeZones() {
   const [safeZones, setSafeZones] = useState<BoundingBox[]>([]);
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const updateZones = () => {
+    const computeZones = () => {
       // Find elements that Malphor should avoid
       // Navbar, specific CTA buttons by text, forms, etc.
       const selectors = [
@@ -36,10 +38,10 @@ export function useSafeZones() {
             // Add some padding to the exclusion zone
             const padding = 20;
             zones.push({
-              x: rect.x - padding,
-              y: rect.y - padding,
-              width: rect.width + padding * 2,
-              height: rect.height + padding * 2
+              x: Math.round(rect.x - padding),
+              y: Math.round(rect.y - padding),
+              width: Math.round(rect.width + padding * 2),
+              height: Math.round(rect.height + padding * 2)
             });
           }
         });
@@ -53,10 +55,10 @@ export function useSafeZones() {
           const rect = btn.getBoundingClientRect();
           if (rect.width > 0 && rect.height > 0) {
             zones.push({
-              x: rect.x - 20,
-              y: rect.y - 20,
-              width: rect.width + 40,
-              height: rect.height + 40
+              x: Math.round(rect.x - 20),
+              y: Math.round(rect.y - 20),
+              width: Math.round(rect.width + 40),
+              height: Math.round(rect.height + 40)
             });
           }
         }
@@ -68,6 +70,11 @@ export function useSafeZones() {
         }
         return zones;
       });
+    };
+
+    const updateZones = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(computeZones, 150);
     };
 
     // Initial check
@@ -85,6 +92,7 @@ export function useSafeZones() {
       window.removeEventListener('resize', updateZones);
       window.removeEventListener('scroll', updateZones);
       clearInterval(interval);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
