@@ -1,6 +1,5 @@
 'use client';
 import { motion } from 'framer-motion';
-import { SplitText } from '@/components/ui/SplitText';
 
 export function HeroSection() {
   return (
@@ -22,8 +21,9 @@ export function HeroSection() {
           }}
         >
           <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 text-foreground drop-shadow-2xl leading-[1.1]">
-            <SplitText text="One Platform." tag="span" />
-            <SplitText text="Infinite Learning." tag="span" className="text-gradient" delay={60} />
+            <span>One Platform.</span>
+            <br />
+            <span className="text-gradient inline-block mt-2">Infinite Learning.</span>
           </h1>
         </motion.div>
         <motion.p 

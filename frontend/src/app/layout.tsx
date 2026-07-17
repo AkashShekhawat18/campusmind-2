@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
-import { SplashCursor } from "@/components/ui/SplashCursor";
 import { SmoothScrollProvider } from "@/components/ui/SmoothScrollProvider";
 import { GridOverlay } from "@/components/ui/GridOverlay";
 import { FloatingParticles } from "@/components/ui/FloatingParticles";
@@ -39,7 +38,6 @@ export default function RootLayout({
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
             <SmoothScrollProvider>
-              <SplashCursor />
               <GridOverlay />
               <FloatingParticles />
               {children}
