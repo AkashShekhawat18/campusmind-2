@@ -6,7 +6,7 @@ const axios = require('axios');
 
 // Fetch the best API key for a provider (Round Robin based on lastUsed)
 const getProviderKey = async (providerId, previousFailedKeyId = null) => {
-  const whereClause = { providerId, active: true };
+  const whereClause = { providerId, active: true, status: 'Active' };
   if (previousFailedKeyId) {
     whereClause.id = { not: previousFailedKeyId };
   }
@@ -25,7 +25,7 @@ const getProviderKey = async (providerId, previousFailedKeyId = null) => {
       await prisma.providerAPIKey.update({
         where: { id: selectedKey.id },
         data: { status: 'RateLimited' }
-      });
+      }).catch(() => {});
       return getProviderKey(providerId, selectedKey.id); // Try next
     }
 
@@ -36,7 +36,7 @@ const getProviderKey = async (providerId, previousFailedKeyId = null) => {
         usageCount: { increment: 1 },
         requestsToday: { increment: 1 }
       }
-    });
+    }).catch(() => {});
     return selectedKey; // Return the full key object
   }
   
@@ -51,8 +51,8 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
     return { error: 'All retries failed' };
   }
 
-  const providerName = modelConfig.provider.providerSlug;
-  const modelName = modelConfig.modelName;
+  const providerName = modelConfig?.provider?.providerSlug || 'groq';
+  const modelName = modelConfig?.modelName || 'llama-3.3-70b-versatile';
   const startTime = Date.now();
   let tokens = 0;
   
@@ -62,8 +62,9 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
     res.setHeader('Connection', 'keep-alive');
   }
 
+  let keyObject = null;
   try {
-    const keyObject = await getProviderKey(modelConfig.providerId, previousFailedKeyId);
+    keyObject = await getProviderKey(modelConfig.providerId, previousFailedKeyId);
     let apiKey = keyObject ? keyObject.encryptedApiKey : null;
 
     if (!apiKey) {
@@ -75,9 +76,11 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
       if (apiKey) apiKey = apiKey.replace(/^["']|["']$/g, '');
     }
 
-    if (!apiKey) {
+    if (!apiKey && providerName !== 'ollama' && modelConfig?.provider?.providerType !== 'Local') {
       throw new Error(`No API key available for provider: ${providerName}`);
     }
+
+    console.log(`[AI Router] Attempt ${attempt}: Using provider="${providerName}", Model="${modelName}"`);
 
     if (attempt === 1) res.write(`data: ${JSON.stringify({ type: 'start' })}\n\n`);
 
@@ -105,7 +108,7 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
       
       const systemMessage = messages.find(m => m.role === 'system')?.content || '';
       let chatHistory = messages.filter(m => m.role !== 'system');
-      const latestMessage = chatHistory.pop();
+      const latestMessage = chatHistory.pop() || { content: 'Hello' };
       
       const formattedHistory = chatHistory.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -146,6 +149,48 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
           res.write(`data: ${JSON.stringify({ type: 'token', content: chunk.delta.text })}\n\n`);
         }
       }
+    }
+    else if (providerName === 'ollama' || modelConfig?.provider?.providerType === 'Local') {
+      let baseURL = modelConfig?.provider?.apiBaseUrl || 'http://localhost:11434/v1';
+      if (!baseURL.endsWith('/chat/completions')) {
+        baseURL = `${baseURL.replace(/\/$/, '')}/chat/completions`;
+      }
+
+      const response = await axios({
+        method: 'post',
+        url: baseURL,
+        headers: { 'Content-Type': 'application/json' },
+        data: {
+          model: modelName,
+          messages: messages,
+          temperature: modelConfig.temperature || 0.7,
+          max_tokens: modelConfig.maxTokens || 2048,
+          stream: true
+        },
+        responseType: 'stream',
+        timeout: 15000
+      });
+
+      response.data.on('data', (chunk) => {
+        const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
+        for (const line of lines) {
+          const message = line.replace(/^data: /, '');
+          if (message === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(message);
+            const content = parsed.choices[0]?.delta?.content;
+            if (content) {
+              tokens += 1;
+              res.write(`data: ${JSON.stringify({ type: 'token', content })}\n\n`);
+            }
+          } catch (e) {}
+        }
+      });
+
+      await new Promise((resolve, reject) => {
+        response.data.on('end', resolve);
+        response.data.on('error', reject);
+      });
     }
     else {
       let baseURL = modelConfig.provider.apiBaseUrl || 'https://api.openai.com/v1';
@@ -202,16 +247,28 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
   } catch (err) {
     console.error(`AI Router Stream Error (Attempt ${attempt}):`, err.message || err);
     
-    // RETRY LOGIC: Switch API Key or Fallback Model
-    console.log('Initiating fallback...');
-    // We update health status
-    await prisma.aIProvider.update({
-      where: { id: modelConfig.providerId },
-      data: { status: 'Slow' } // or 'Offline' if multiple fails
-    });
+    // Mark key as RateLimited/Invalid if keyObject exists
+    if (keyObject) {
+      await prisma.providerAPIKey.update({
+        where: { id: keyObject.id },
+        data: { status: 'RateLimited' }
+      }).catch(() => {});
+    }
 
-    // Try same model but different key, or find a fallback model
-    return streamResponse(req, res, modelConfig, messages, attempt + 1, null);
+    // Automatically fall back to Groq CampusMind Turbo model if non-Groq fails
+    let fallbackModelConfig = modelConfig;
+    if (providerName !== 'groq') {
+      console.log(`[AI Router Fallback] Provider ${providerName} failed. Switching to Groq...`);
+      const groqModel = await prisma.aIModel.findFirst({
+        where: { enabled: true, provider: { providerSlug: 'groq' } },
+        include: { provider: true }
+      });
+      if (groqModel) {
+        fallbackModelConfig = groqModel;
+      }
+    }
+
+    return streamResponse(req, res, fallbackModelConfig, messages, attempt + 1, keyObject?.id || null);
   }
 };
 

@@ -60,7 +60,7 @@ async def extract_text(file: UploadFile) -> str:
                                     ],
                                 }
                             ],
-                            model="llama-3.2-90b-vision-preview",
+                            model="llama-3.2-11b-vision-preview",
                         )
                         page_text = res.choices[0].message.content
                     except Exception as e:
@@ -113,7 +113,7 @@ async def extract_text(file: UploadFile) -> str:
                             ],
                         }
                     ],
-                    model="llama-3.2-90b-vision-preview",
+                    model="llama-3.2-11b-vision-preview",
                 )
                 text = res.choices[0].message.content
             except Exception as e:

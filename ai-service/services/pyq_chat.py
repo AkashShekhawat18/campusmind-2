@@ -29,7 +29,6 @@ async def stream_pyq_chat(
     """
     client = get_groq_client()
     
-    # Base system prompt
     system_prompt = """You are MALPHOR (CampusMind AI), an expert academic professor and PYQ (Previous Year Question) analyzer.
     You analyze exam papers, identify trends, explain concepts, and provide actionable insights.
     
@@ -38,6 +37,11 @@ async def stream_pyq_chat(
     2. For Advanced Physics, Mathematics, and Quantum Mechanics: ALWAYS think step-by-step and rigorously verify your formulas before answering.
     3. Double-check standard quantum computing concepts (e.g., phase kickback requires initializing the target qubit to the |-> state, not |1>).
     4. Rely strictly on the provided context if it contains the answer.
+    
+    BEHAVIOR RULES:
+    - If the user says a simple greeting (e.g., "hi", "hello"), respond warmly with a short greeting and ask how you can assist them with the paper. DO NOT output the full paper analysis statistics automatically unless explicitly asked to summarize or analyze the paper.
+    - Only provide the paper stats (Repetition %, Fully Repeated, etc.) when the user asks for a summary, analysis, or stats of the paper.
+    - Answer user questions naturally and concisely based on the context.
     
     FORMATTING RULES:
     - Use Markdown for all responses.
@@ -113,7 +117,7 @@ async def stream_pyq_chat(
             yield "data: [DONE]\n\n"
         except Exception as e:
             print(f"Chat error: {e}")
-            yield f"data: {json.dumps({'text': 'Sorry, I encountered an error while processing your request.'})}\n\n"
+            yield f"data: {json.dumps({'text': f'Sorry, I encountered an error while processing your request (Invalid API Key). Error: {str(e)}'})}\n\n"
             yield "data: [DONE]\n\n"
             
     return StreamingResponse(generate(), media_type="text/event-stream")

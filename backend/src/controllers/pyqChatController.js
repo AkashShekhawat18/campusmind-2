@@ -106,8 +106,16 @@ exports.globalChat = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Global Chat Error:', error);
-    res.status(500).json({ error: 'Failed to process chat' });
+    if (error.response) {
+      console.error('Global Chat Error Axios:', error.response.status, error.response.data);
+      res.status(500).json({ error: 'Failed to process chat: AI Service returned ' + error.response.status });
+    } else if (error.code === 'ECONNREFUSED') {
+      console.error('Global Chat Error: AI Service is not running on', AI_SERVICE_URL);
+      res.status(503).json({ error: 'AI Service is not available. Please ensure the AI service is running on port 8000.' });
+    } else {
+      console.error('Global Chat Error:', error);
+      res.status(500).json({ error: 'Failed to process chat: ' + error.message });
+    }
   }
 };
 
@@ -213,6 +221,9 @@ exports.paperChat = async (req, res) => {
     if (error.response) {
        console.error('Paper Chat Error Axios:', error.response.status, error.response.data);
        res.status(500).json({ error: 'Failed to process chat: AI Service returned ' + error.response.status });
+    } else if (error.code === 'ECONNREFUSED') {
+       console.error('Paper Chat Error: AI Service is not running on', AI_SERVICE_URL);
+       res.status(503).json({ error: 'AI Service is not available. Please ensure the AI service is running on port 8000.' });
     } else {
        console.error('Paper Chat Error:', error);
        res.status(500).json({ error: 'Failed to process chat: ' + error.message });

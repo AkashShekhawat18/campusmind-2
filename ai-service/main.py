@@ -17,7 +17,7 @@ from services.embedding_service import get_embeddings
 from fastapi.responses import Response
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 app = FastAPI(title="CampusMind AI Microservice", version="1.0")
 

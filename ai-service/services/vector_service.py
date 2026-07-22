@@ -9,12 +9,24 @@ os.makedirs(DB_PATH, exist_ok=True)
 # Initialize ChromaDB persistent client
 client = chromadb.PersistentClient(path=DB_PATH)
 
+import re
+
+def sanitize_user_id(user_id: str) -> str:
+    if not user_id or str(user_id).strip() in ["null", "undefined", "None", ""]:
+        return "demo-user"
+    clean = re.sub(r'[^a-zA-Z0-9_-]', '_', str(user_id).strip())
+    return clean if clean else "demo-user"
+
 def get_user_collection(user_id: str):
     """
     Get or create a dedicated ChromaDB collection for a specific user.
     This ensures complete isolation of user data.
     """
-    collection_name = f"user_{user_id.replace('-', '_')}"
+    clean_id = sanitize_user_id(user_id)
+    collection_name = f"user_{clean_id}"
+    # Ensure collection_name adheres to ChromaDB rules (3-63 chars)
+    if len(collection_name) > 63:
+        collection_name = collection_name[:63]
     return client.get_or_create_collection(name=collection_name)
 
 def store_chunks(user_id: str, document_id: str, filename: str, chunks: list[str], embeddings: list[list[float]]):
@@ -37,20 +49,32 @@ def store_chunks(user_id: str, document_id: str, filename: str, chunks: list[str
     )
     return True
 
-def search_chunks(user_id: str, query_embedding: list[float], n_results: int = 5):
+def search_chunks(user_id: str, query_embedding: list[float], n_results: int = 6):
     """
     Search the user's collection for the most similar chunks.
+    If current user collection is empty, fall back to checking demo-user or other collections.
     """
     try:
-        collection = get_user_collection(user_id)
+        clean_id = sanitize_user_id(user_id)
+        collection = get_user_collection(clean_id)
         
-        # If collection is empty, this will raise or return empty
+        # Fallback search if current user collection is empty: check 'demo-user' or 'null'
+        if collection.count() == 0:
+            for fallback_id in ["demo-user", "null"]:
+                if fallback_id != clean_id:
+                    fb_col = get_user_collection(fallback_id)
+                    if fb_col.count() > 0:
+                        collection = fb_col
+                        break
+                        
         if collection.count() == 0:
             return []
             
+        # Ensure n_results does not exceed total count in collection
+        actual_n = min(n_results, collection.count())
         results = collection.query(
             query_embeddings=[query_embedding],
-            n_results=n_results
+            n_results=actual_n
         )
         
         # Format results
@@ -68,6 +92,41 @@ def search_chunks(user_id: str, query_embedding: list[float], n_results: int = 5
         return formatted_results
     except Exception as e:
         print(f"Vector search error: {e}")
+        return []
+
+def get_recent_chunks(user_id: str, limit: int = 6):
+    """
+    Get raw chunks directly from the user's collection (used when query is general summary/explanation).
+    """
+    try:
+        clean_id = sanitize_user_id(user_id)
+        collection = get_user_collection(clean_id)
+        
+        if collection.count() == 0:
+            for fallback_id in ["demo-user", "null"]:
+                if fallback_id != clean_id:
+                    fb_col = get_user_collection(fallback_id)
+                    if fb_col.count() > 0:
+                        collection = fb_col
+                        break
+                        
+        if collection.count() == 0:
+            return []
+            
+        data = collection.get(limit=limit)
+        if not data or not data.get('documents'):
+            return []
+            
+        formatted_results = []
+        for i in range(len(data['documents'])):
+            formatted_results.append({
+                "text": data['documents'][i],
+                "metadata": data['metadatas'][i] if data.get('metadatas') else {},
+                "distance": 0.0
+            })
+        return formatted_results
+    except Exception as e:
+        print(f"Get recent chunks error: {e}")
         return []
 
 def delete_collection_for_user(user_id: str):

@@ -66,6 +66,8 @@ export function Malphor() {
       setChatOpen(true);
       fireGesture('nod');
       showBubble('Opening support console... 🚀', 2000);
+    } else {
+      setChatOpen(false);
     }
   };
 

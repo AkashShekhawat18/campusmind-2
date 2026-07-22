@@ -5,8 +5,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+
+const preprocessLatex = (text: string): string => {
+  if (!text) return '';
+  let processed = text.replace(/\\\( ([\s\S]*?) \\\)/g, '$$$1$$');
+  processed = processed.replace(/\\\((.*?)\\\)/g, '$$$1$$');
+  processed = processed.replace(/\\\[ ([\s\S]*?) \\\]/g, '$$$$\n$1\n$$$$');
+  processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$\n$1\n$$$$');
+  return processed;
+};
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -225,9 +235,12 @@ export default function StudentCampusGPT() {
     const asstMsgId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: asstMsgId, role: 'assistant', content: '' }]);
 
-    try {
+      const messagePayload = readyFiles.length > 0 
+        ? `${userMsg.content} (Attached document: ${readyFiles.map(f => f.name).join(', ')})` 
+        : userMsg.content;
+
       const formData = new URLSearchParams();
-      formData.append('message', userMsg.content);
+      formData.append('message', messagePayload);
       formData.append('user_id', userId!);
       formData.append('model_id', selectedModelId);
       if (currentChatId) formData.append('chat_id', currentChatId);
@@ -527,7 +540,7 @@ export default function StudentCampusGPT() {
                             <span className="animate-pulse">Thinking...</span>
                           ) : (
                             <ReactMarkdown
-                              remarkPlugins={[remarkMath]}
+                              remarkPlugins={[remarkMath, remarkGfm]}
                               rehypePlugins={[rehypeKatex]}
                               components={{
                                 code({ className, children, ...props }) {
@@ -555,7 +568,7 @@ export default function StudentCampusGPT() {
                                 }
                               }}
                             >
-                              {msg.content}
+                              {preprocessLatex(msg.content)}
                             </ReactMarkdown>
                           )}
                         </div>

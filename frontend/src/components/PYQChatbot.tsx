@@ -112,14 +112,20 @@ export default function PYQChatbot({ chatType, analysisId, isOpen, onClose }: PY
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      let errorMessage = "Sorry, I encountered an error. Please try again.";
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        errorMessage = "⚠️ Cannot connect to the server. Please make sure the backend is running on port 5000 (`npm run dev` in the backend folder).";
+      } else if (error.message) {
+        errorMessage = `⚠️ Error: ${error.message}`;
+      }
       setMessages(prev => {
         const newMessages = [...prev];
         const lastIdx = newMessages.length - 1;
         newMessages[lastIdx] = {
           ...newMessages[lastIdx],
-          content: "Sorry, I encountered an error. Please try again."
+          content: errorMessage
         };
         return newMessages;
       });
