@@ -1,7 +1,10 @@
 node_modules/
 backend/uploads/
 
+venv/
+*/venv/
 ai-service/venv/
+admin-service/venv/
 ai-service/__pycache__/
 ai-service/services/__pycache__/
 ai-service/chroma_db/
@@ -12,6 +15,7 @@ __pycache__/
 
 .env
 .env.*
+!.env.example
 *.db
 *.db-journal
 *.sqlite3

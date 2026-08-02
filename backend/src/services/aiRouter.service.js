@@ -69,9 +69,12 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
 
     if (!apiKey) {
       // Fallback to ENV if DB has no active keys
-      apiKey = process.env[`${providerName.toUpperCase()}_API_KEY`];
+      apiKey = process.env[`${providerName.toUpperCase()}_API_KEY` ];
       if (!apiKey && process.env[`${providerName.toUpperCase()}_API_KEYS`]) {
         apiKey = process.env[`${providerName.toUpperCase()}_API_KEYS`].split(',')[0].trim();
+      }
+      if (!apiKey && (providerName === 'google' || providerName === 'gemini')) {
+        apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || (process.env.GEMINI_API_KEYS ? process.env.GEMINI_API_KEYS.split(',')[0].trim() : null) || (process.env.GOOGLE_API_KEYS ? process.env.GOOGLE_API_KEYS.split(',')[0].trim() : null);
       }
       if (apiKey) apiKey = apiKey.replace(/^["']|["']$/g, '');
     }
@@ -104,26 +107,52 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
     } 
     else if (providerName === 'google') {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: modelName || "gemini-1.5-flash" });
       
-      const systemMessage = messages.find(m => m.role === 'system')?.content || '';
-      let chatHistory = messages.filter(m => m.role !== 'system');
-      const latestMessage = chatHistory.pop() || { content: 'Hello' };
-      
-      const formattedHistory = chatHistory.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }));
+      // Candidate model hierarchy to guarantee 100% uptime for Google models
+      let candidates = ['gemini-2.5-flash', 'gemma-4-26b-a4b-it'];
+      if (modelName && modelName !== 'gemini-1.5-flash' && modelName !== 'gemini-1.5-pro') {
+        candidates.unshift(modelName);
+      } else if (modelName) {
+        candidates.push(modelName);
+      }
 
-      const promptText = systemMessage ? `System Instruction:\n${systemMessage}\n\nUser:\n${latestMessage.content}` : latestMessage.content;
-      
-      const chat = model.startChat({ history: formattedHistory });
-      const result = await chat.sendMessageStream(promptText);
+      let lastError = null;
+      let streamedSuccess = false;
 
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        tokens += chunkText.length / 4;
-        res.write(`data: ${JSON.stringify({ type: 'token', content: chunkText })}\n\n`);
+      for (const candidateModelName of candidates) {
+        try {
+          console.log(`[AI Router] Trying Google model: ${candidateModelName}`);
+          const model = genAI.getGenerativeModel({ model: candidateModelName });
+          
+          const systemMessage = messages.find(m => m.role === 'system')?.content || '';
+          let chatHistory = messages.filter(m => m.role !== 'system');
+          const latestMessage = chatHistory.pop() || { content: 'Hello' };
+          
+          const formattedHistory = chatHistory.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          }));
+
+          const promptText = systemMessage ? `System Instruction:\n${systemMessage}\n\nUser:\n${latestMessage.content}` : latestMessage.content;
+          
+          const chat = model.startChat({ history: formattedHistory });
+          const result = await chat.sendMessageStream(promptText);
+
+          for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            tokens += chunkText.length / 4;
+            res.write(`data: ${JSON.stringify({ type: 'token', content: chunkText })}\n\n`);
+          }
+          streamedSuccess = true;
+          break;
+        } catch (gErr) {
+          console.warn(`[AI Router] Google Model '${candidateModelName}' failed: ${gErr.message}`);
+          lastError = gErr;
+        }
+      }
+
+      if (!streamedSuccess && lastError) {
+        throw lastError;
       }
     }
     else if (providerName === 'anthropic') {
@@ -151,10 +180,9 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
       }
     }
     else if (providerName === 'ollama' || modelConfig?.provider?.providerType === 'Local') {
-      let baseURL = modelConfig?.provider?.apiBaseUrl || 'http://localhost:11434/v1';
-      if (!baseURL.endsWith('/chat/completions')) {
-        baseURL = `${baseURL.replace(/\/$/, '')}/chat/completions`;
-      }
+      let baseURL = process.env.OLLAMA_BASE_URL || modelConfig?.provider?.apiBaseUrl || 'http://localhost:11434';
+      // Use Ollama's native /api/chat endpoint (supports think:false and options)
+      baseURL = `${baseURL.replace(/\/$/, '').replace(/\/v1\/chat\/completions$/, '').replace(/\/api\/chat$/, '')}/api/chat`;
 
       const response = await axios({
         method: 'post',
@@ -163,32 +191,65 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
         data: {
           model: modelName,
           messages: messages,
-          temperature: modelConfig.temperature || 0.7,
-          max_tokens: modelConfig.maxTokens || 2048,
-          stream: true
+          stream: true,
+          think: false,  // Disable Qwen3 chain-of-thought reasoning (~3-4x faster)
+          options: {
+            temperature: 0.5,
+            num_ctx: 2048,       // Smaller context window = faster prompt processing
+            num_predict: 512,    // Limit generation length
+            num_thread: 12,      // Use all CPU cores
+            repeat_penalty: 1.1,
+            top_k: 20,           // Smaller top_k = faster sampling
+            top_p: 0.8
+          }
         },
         responseType: 'stream',
-        timeout: 15000
+        timeout: 120000
       });
 
+      // Ollama native /api/chat streams NDJSON (one JSON object per line)
+      let buffer = '';
       response.data.on('data', (chunk) => {
-        const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
         for (const line of lines) {
-          const message = line.replace(/^data: /, '');
-          if (message === '[DONE]') break;
+          const trimmed = line.trim();
+          if (!trimmed) continue;
           try {
-            const parsed = JSON.parse(message);
-            const content = parsed.choices[0]?.delta?.content;
-            if (content) {
-              tokens += 1;
-              res.write(`data: ${JSON.stringify({ type: 'token', content })}\n\n`);
+            const parsed = JSON.parse(trimmed);
+            // Native format: { message: { content: "..." }, done: false }
+            const content = parsed.message?.content || '';
+            if (content && !parsed.done) {
+              // Strip any residual think tags
+              const clean = content.replace(/<\/?think>/g, '');
+              if (clean) {
+                tokens += 1;
+                res.write(`data: ${JSON.stringify({ type: 'token', content: clean })}\n\n`);
+              }
             }
           } catch (e) {}
         }
       });
 
       await new Promise((resolve, reject) => {
-        response.data.on('end', resolve);
+        response.data.on('end', () => {
+          if (buffer.trim()) {
+            try {
+              const parsed = JSON.parse(buffer.trim());
+              const content = parsed.message?.content || '';
+              if (content && !parsed.done) {
+                const clean = content.replace(/<\/?think>/g, '');
+                if (clean) {
+                  tokens += 1;
+                  res.write(`data: ${JSON.stringify({ type: 'token', content: clean })}\n\n`);
+                }
+              }
+            } catch (e) {}
+          }
+          resolve();
+        });
         response.data.on('error', reject);
       });
     }
@@ -274,26 +335,12 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
 
 const getModelConfig = async (modelId, prompt = "") => {
   if (!modelId || modelId === 'auto') {
-    // Intelligent Routing logic
-    const lowerPrompt = prompt.toLowerCase();
-    
-    let requiredCapability = null;
-    if (lowerPrompt.includes('code') || lowerPrompt.includes('debug') || lowerPrompt.includes('function') || lowerPrompt.includes('python') || lowerPrompt.includes('javascript') || lowerPrompt.includes('react')) {
-      requiredCapability = 'coding';
-    }
-    
-    if (lowerPrompt.includes('math') || lowerPrompt.includes('equation') || lowerPrompt.includes('calculate') || lowerPrompt.includes('derive')) {
-      requiredCapability = 'reasoning';
-    }
-
-    let model;
-    if (requiredCapability === 'reasoning') {
-      model = await prisma.aIModel.findFirst({
-        where: { supportsReasoning: true, enabled: true },
-        orderBy: { priority: 'desc' },
-        include: { provider: true }
-      });
-    }
+    // Intelligent Routing logic - Default to high-speed Groq LPU models (<500ms latency)
+    let model = await prisma.aIModel.findFirst({
+      where: { enabled: true, provider: { providerSlug: 'groq' } },
+      orderBy: { priority: 'desc' },
+      include: { provider: true }
+    });
 
     if (!model) {
       model = await prisma.aIModel.findFirst({

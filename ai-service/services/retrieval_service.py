@@ -1,62 +1,81 @@
 from services.embedding_service import get_embeddings
 from services.vector_service import search_chunks, get_recent_chunks
 
-def is_general_doc_query(query: str) -> bool:
+def classify_query_intent(query: str) -> str:
     """
-    Check if the query is asking for general document overview, explanation, or summary.
+    Classifies user query intent:
+    - 'DOCUMENT_SUMMARY': Asking for overview, summary, explanation of uploaded file
+    - 'SPECIFIC_QUESTION': Asking for a specific question, formula, problem, or section (e.g. 'Question 5', 'MCQs')
+    - 'CONVERSATIONAL': General greeting or pure LLM knowledge request
     """
     q_lower = query.lower()
-    keywords = [
+    
+    summary_keywords = [
         "explain", "summarize", "summary", "overview", "what is", "about", 
-        "pdf", "file", "document", "attached", "describe", "analyze", "analysis",
-        "key points", "tell me", "content", "details"
+        "pdf", "file", "document", "attached", "photo", "image", "describe", 
+        "analyze", "analysis", "key points", "tell me", "content", "details"
     ]
-    return any(kw in q_lower for kw in keywords)
+    
+    specific_keywords = [
+        "question", "q1", "q2", "q3", "q4", "q5", "q6", "mcq", "viva", 
+        "solve", "equation", "formula", "diagram", "table", "translate", 
+        "generate", "problem", "code", "solution", "section", "part"
+    ]
+    
+    if any(kw in q_lower for kw in summary_keywords):
+        return "DOCUMENT_SUMMARY"
+    elif any(kw in q_lower for kw in specific_keywords):
+        return "SPECIFIC_QUESTION"
+    return "CONVERSATIONAL"
 
-def retrieve_context(query: str, user_id: str, top_k: int = 6) -> str:
+def retrieve_context(query: str, user_id: str, chat_id: str = None, top_k: int = 8) -> str:
     """
-    Perform semantic search for a query and return a concatenated context string.
+    Intelligent Context Retrieval Pipeline for CampusGPT:
+    1. Search active chat_id documents and persistent user knowledge base.
+    2. Format source metadata and chunks cleanly for LLM reasoning.
     """
     if not query.strip():
+        print("[RAG Retrieval] Empty query passed. Returning empty context.")
         return ""
         
-    is_general = is_general_doc_query(query)
+    safe_chat_id = str(chat_id).strip() if chat_id else ""
+    intent = classify_query_intent(query)
     
-    # 1. Embed the user query
-    query_embeddings = get_embeddings([query])
     results = []
+    # 1. Embed query and search ChromaDB vector store (active chat + persistent User Knowledge Base)
+    query_embeddings = get_embeddings([query])
     if query_embeddings:
-        # 2. Search ChromaDB
-        results = search_chunks(user_id, query_embeddings[0], n_results=top_k)
+        results = search_chunks(user_id, query_embeddings[0], n_results=top_k, chat_id=safe_chat_id)
     
-    # If vector search produced no results and query is asking about a document, try direct collection retrieval
+    # 2. If vector search yields no hits or query asks for document summary/follow-up, retrieve recent chunks from knowledge base
+    if not results or intent in ["DOCUMENT_SUMMARY", "SPECIFIC_QUESTION"]:
+        recent_results = get_recent_chunks(user_id, limit=top_k, chat_id=safe_chat_id)
+        if recent_results:
+            seen_texts = set(r.get("text", "") for r in results)
+            for r in recent_results:
+                if r.get("text", "") not in seen_texts:
+                    results.append(r)
+                    seen_texts.add(r.get("text", ""))
+
     if not results:
-        results = get_recent_chunks(user_id, limit=top_k)
-        
-    if not results:
+        print(f"[RAG Retrieval] Context empty for user_id='{user_id}', chat_id='{safe_chat_id}'")
         return ""
         
-    # 3. Format context
+    # 3. Assemble structured context
     context_parts = []
-    MAX_DISTANCE = 3.0 if is_general else 1.8
+    seen_sources = set()
     
-    for res in results:
-        distance = res.get("distance", 0)
-        if distance > MAX_DISTANCE and not is_general:
-            continue
-            
-        filename = res.get("metadata", {}).get("filename", "Uploaded document")
+    for res in results[:top_k]:
+        filename = res.get("metadata", {}).get("filename", "Uploaded Document")
         text = res.get("text", "")
         if text:
-            context_parts.append(f"--- SOURCE: {filename} ---\n{text}\n")
-        
-    # Fallback: If distance threshold filtered out everything, but documents exist in the collection,
-    # include top results so the LLM is aware of the user's uploaded document content.
-    if not context_parts and results:
-        for res in results[:top_k]:
-            filename = res.get("metadata", {}).get("filename", "Uploaded document")
-            text = res.get("text", "")
-            if text:
-                context_parts.append(f"--- SOURCE: {filename} ---\n{text}\n")
+            seen_sources.add(filename)
+            context_parts.append(f"--- KNOWLEDGE SOURCE: {filename} ---\n{text}\n")
             
-    return "\n".join(context_parts)
+    final_context = "\n".join(context_parts)
+
+    print("\n========== RETRIEVED KNOWLEDGE BASE CONTEXT ==========")
+    print(final_context[:800])
+    print("======================================================\n")
+
+    return final_context

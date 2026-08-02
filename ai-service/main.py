@@ -39,6 +39,7 @@ async def upload_document(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     user_id: str = Form(...),
+    chat_id: Optional[str] = Form(None)
 ):
     """
     Handle document uploads: extract text (OCR if needed), chunk, and embed into ChromaDB.
@@ -46,7 +47,7 @@ async def upload_document(
     try:
         results = []
         for file in files:
-            result = await process_upload(file, user_id)
+            result = await process_upload(file, user_id, chat_id=chat_id)
             results.append(result)
         return {"status": "success", "results": results}
     except Exception as e:
@@ -176,17 +177,34 @@ async def index_pyq(
 @app.post("/api/ai/context")
 async def get_context(
     message: str = Form(...),
-    user_id: str = Form(...)
+    user_id: str = Form(...),
+    chat_id: Optional[str] = Form(None)
 ):
     """
-    Retrieve RAG context for a user message.
+    Retrieve RAG context for a user message, strictly scoped by chat_id.
     """
     try:
         from services.retrieval_service import retrieve_context
-        context = retrieve_context(message, user_id, top_k=5)
+        context = retrieve_context(message, user_id, chat_id=chat_id, top_k=5)
         return {"status": "success", "context": context}
     except Exception as e:
         print(f"Context Retrieval Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/chat/delete")
+async def delete_chat_memory(
+    user_id: str = Form(...),
+    chat_id: str = Form(...)
+):
+    """
+    Purge vector store embeddings and memory chunks for a deleted chat_id.
+    """
+    try:
+        from services.vector_service import delete_chunks_for_chat
+        success = delete_chunks_for_chat(user_id, chat_id)
+        return {"status": "success", "message": f"Memory purged for chat '{chat_id}'"}
+    except Exception as e:
+        print(f"Delete Chat Memory Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 from pydantic import BaseModel

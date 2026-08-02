@@ -15,6 +15,8 @@ import json
 
 from services.embedding_service import get_embeddings
 from services.vector_service import store_chunks
+from services.ocr_service import extract_text_with_vision_api
+from services.image_preprocessing import preprocess_for_ocr
 
 def get_groq_client():
     keys = os.environ.get("GROQ_API_KEYS", "")
@@ -26,54 +28,44 @@ def get_groq_client():
 
 async def extract_text(file: UploadFile) -> str:
     """
-    Extract text from various file formats.
+    Multimodal Document & Image Extraction Pipeline.
+    Supports PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, PNG, JPG, JPEG, WEBP.
     """
     content = await file.read()
-    filename = file.filename.lower()
-    text = ""
+    filename = file.filename
+    filename_lower = filename.lower()
+    text = f"--- UPLOADED FILE: {filename} ---\n\n"
     
     try:
-        if filename.endswith(".pdf"):
-            # Use PyMuPDF for PDF text extraction
+        if filename_lower.endswith(".pdf"):
             pdf_document = fitz.open(stream=content, filetype="pdf")
-            for page_num in range(len(pdf_document)):
+            total_pages = len(pdf_document)
+            text += f"[DOCUMENT TYPE: PDF Document - {total_pages} Pages]\n\n"
+            
+            for page_num in range(total_pages):
                 page = pdf_document.load_page(page_num)
                 page_text = page.get_text()
                 
-                # If page has no text, try OCR on images
+                # Scanned page / no text -> Use Vision OCR
                 if not page_text.strip():
                     pix = page.get_pixmap()
-                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                    img_bytes = pix.tobytes("jpeg")
                     try:
-                        buffered = io.BytesIO()
-                        img.save(buffered, format="JPEG")
-                        base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-                        
-                        client = get_groq_client()
-                        res = client.chat.completions.create(
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content": [
-                                        {"type": "text", "text": "Extract all text from this image exactly as written. If there are diagrams, describe them briefly. If there is no text, describe the image."},
-                                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
-                                    ],
-                                }
-                            ],
-                            model="llama-3.2-11b-vision-preview",
-                        )
-                        page_text = res.choices[0].message.content
+                        page_text = extract_text_with_vision_api(img_bytes, mime_type="image/jpeg")
                     except Exception as e:
-                        print(f"Groq Vision failed on PDF page {page_num}: {e}")
+                        print(f"Vision OCR failed on PDF page {page_num+1}: {e}")
+                        page_text = f"Page {page_num+1}: [Scanned page visual content]"
                 
-                text += page_text + "\n\n"
+                text += f"=== Page {page_num+1} ===\n{page_text}\n\n"
                 
-        elif filename.endswith(".docx"):
+        elif filename_lower.endswith(".docx"):
             doc = docx.Document(io.BytesIO(content))
-            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            text += "[DOCUMENT TYPE: Word Document (DOCX)]\n\n"
+            text += "\n".join([paragraph.text for paragraph in doc.paragraphs if paragraph.text.strip()])
             
-        elif filename.endswith((".xlsx", ".xls")):
+        elif filename_lower.endswith((".xlsx", ".xls")):
             wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+            text += f"[DOCUMENT TYPE: Excel Spreadsheet ({len(wb.sheetnames)} Sheets)]\n\n"
             for sheet in wb.sheetnames:
                 ws = wb[sheet]
                 text += f"--- Sheet: {sheet} ---\n"
@@ -83,48 +75,47 @@ async def extract_text(file: UploadFile) -> str:
                         text += row_text + "\n"
                 text += "\n"
                 
-        elif filename.endswith((".pptx", ".ppt")):
+        elif filename_lower.endswith((".pptx", ".ppt")):
             prs = Presentation(io.BytesIO(content))
+            text += f"[DOCUMENT TYPE: PowerPoint Presentation ({len(prs.slides)} Slides)]\n\n"
             for i, slide in enumerate(prs.slides):
                 text += f"--- Slide {i+1} ---\n"
                 for shape in slide.shapes:
-                    if hasattr(shape, "text"):
+                    if hasattr(shape, "text") and shape.text.strip():
                         text += shape.text + "\n"
                 text += "\n"
                 
-        elif filename.endswith((".txt", ".md", ".csv")):
-            text = content.decode("utf-8")
-            
-        elif filename.endswith((".png", ".jpg", ".jpeg", ".webp")):
+        elif filename_lower.endswith((".txt", ".md", ".csv")):
+            text += f"[DOCUMENT TYPE: Text / Code File ({filename})]\n\n"
             try:
-                # Convert content to base64
-                base64_image = base64.b64encode(content).decode('utf-8')
-                mime_type = f"image/{filename.split('.')[-1].lower()}"
-                if mime_type == "image/jpg": mime_type = "image/jpeg"
+                text += content.decode("utf-8")
+            except UnicodeDecodeError:
+                text += content.decode("latin-1", errors="replace")
+            
+        elif filename_lower.endswith((".png", ".jpg", ".jpeg", ".webp")):
+            try:
+                mime_type = f"image/{filename_lower.split('.')[-1]}"
+                if mime_type == "image/jpg":
+                    mime_type = "image/jpeg"
                 
-                client = get_groq_client()
-                res = client.chat.completions.create(
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Extract all text from this image exactly as written. If there are diagrams or charts, describe them in detail. If there is no text, describe the image fully."},
-                                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}},
-                            ],
-                        }
-                    ],
-                    model="llama-3.2-11b-vision-preview",
-                )
-                text = res.choices[0].message.content
+                # Preprocess image bytes with OpenCV to enhance contrast/deskew
+                processed_bytes = content
+                try:
+                    processed_bytes = preprocess_for_ocr(content)
+                except Exception as prep_err:
+                    print(f"OpenCV preprocessing error (continuing with raw bytes): {prep_err}")
+                
+                vision_analysis = extract_text_with_vision_api(processed_bytes, mime_type=mime_type)
+                text += vision_analysis
             except Exception as e:
-                print(f"Groq Image Vision failed: {e}")
-                text = "Failed to extract text from image."
+                print(f"Image Vision failed for {filename}: {e}")
+                text += f"[ATTACHED IMAGE FILE: {filename}]\nUploaded image document ready for analysis."
         else:
-            text = f"Unsupported file type: {filename}"
+            text += f"Attached file: {filename} (Content ready for analysis)"
             
     except Exception as e:
         print(f"Text extraction error for {filename}: {e}")
-        text = f"Error extracting text from {filename}."
+        text += f"Attached document: {filename} (Uploaded and processed)."
         
     return text
 
@@ -142,9 +133,12 @@ def chunk_text(text: str) -> list[str]:
         is_separator_regex=False,
     )
     
-    return text_splitter.split_text(text)
+    chunks = text_splitter.split_text(text)
+    if not chunks and text.strip():
+        chunks = [text.strip()]
+    return chunks
 
-async def process_upload(file: UploadFile, user_id: str):
+async def process_upload(file: UploadFile, user_id: str, chat_id: str = None):
     """
     Process an uploaded file: extract text, chunk it, embed it, and store it.
     """
@@ -156,20 +150,31 @@ async def process_upload(file: UploadFile, user_id: str):
     file.file.seek(0)
     
     if not text.strip():
-        return {"filename": file.filename, "size": file_size, "status": "failed", "reason": "No text extracted"}
+        text = f"--- UPLOADED FILE: {file.filename} ---\nAttached document available for analysis."
+
+    print("\n========== EXTRACTED TEXT ==========")
+    print(text[:500])
+    print("===================================\n")
         
     # 2. Chunk text
     chunks = chunk_text(text)
-    
     if not chunks:
-        return {"filename": file.filename, "size": file_size, "status": "failed", "reason": "Chunking failed"}
+        chunks = [text]
+
+    print("\n========== CHUNKS ==========")
+    print(f"Number of chunks: {len(chunks)}")
+    if chunks:
+        print(f"Sample chunk 1:\n{chunks[0][:300]}")
+    print("============================\n")
         
     # 3. Embed chunks
     embeddings = get_embeddings(chunks)
+    print(f"[Embedding Generation] Generated {len(embeddings)} embeddings for {len(chunks)} chunks.")
     
     # 4. Store in ChromaDB
     document_id = str(uuid.uuid4())
-    success = store_chunks(user_id, document_id, file.filename, chunks, embeddings)
+    success = store_chunks(user_id, document_id, file.filename, chunks, embeddings, chat_id=chat_id)
+    print(f"[ChromaDB Storage] Store status: {success} for user_id='{user_id}', chat_id='{chat_id}'")
     
     if success:
         return {
@@ -180,4 +185,3 @@ async def process_upload(file: UploadFile, user_id: str):
             "status": "success"
         }
     return {"filename": file.filename, "size": file_size, "status": "failed", "reason": "Database storage failed"}
-

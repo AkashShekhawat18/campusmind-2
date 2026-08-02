@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const axios = require('axios');
 const { generateResponse } = require('../services/ai.service');
 const { getFileTypeCategory } = require('../services/resourceService');
 // ─── Dashboard ───────────────────────────────────────────────────
@@ -287,14 +288,29 @@ const renameChat = async (req, res, next) => {
 // ─── Delete Chat ─────────────────────────────────────────────────
 const deleteChat = async (req, res, next) => {
   try {
-    const chat = await prisma.chat.findUnique({ where: { id: req.params.id } });
-    
-    if (!chat || chat.userId !== req.user.id) {
-      return res.status(404).json({ error: 'Chat not found' });
+    const chatId = req.params.id;
+    if (!chatId) return res.status(400).json({ error: 'Chat ID required' });
+
+    // Handles temporary unsaved frontend IDs starting with chat_
+    if (!chatId.startsWith('chat_')) {
+      const chat = await prisma.chat.findUnique({ where: { id: chatId } });
+      
+      if (chat && chat.userId === req.user.id) {
+        await prisma.chat.delete({ where: { id: chatId } });
+      }
     }
 
-    await prisma.chat.delete({ where: { id: req.params.id } });
-    res.json({ message: 'Chat deleted' });
+    // Purge vector store embeddings for this chat_id in Python AI microservice
+    try {
+      await axios.post('http://127.0.0.1:8000/api/ai/chat/delete', 
+        new URLSearchParams({ user_id: req.user.id, chat_id: chatId }).toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+    } catch (aiErr) {
+      console.warn('[AI Service Memory Purge Warning]:', aiErr.message);
+    }
+
+    res.json({ message: 'Chat permanently deleted' });
   } catch (error) {
     next(error);
   }

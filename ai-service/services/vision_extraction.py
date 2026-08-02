@@ -27,9 +27,6 @@ def process_page_with_vision(image_bytes: bytes) -> List[Dict[str, Any]]:
     img = Image.open(io.BytesIO(image_bytes))
     img_width, img_height = img.size
     
-    # We use gemini-2.5-flash as requested
-    model = genai.GenerativeModel('gemini-2.5-flash')
-    
     prompt = """
 You are an expert AI professor and academic document analyzer.
 Extract all questions from the provided exam paper image.
@@ -52,9 +49,31 @@ IMPORTANT:
 - If the entire question is a text block, images should be an empty array [].
 - Output ONLY valid JSON containing the array. Do not include markdown formatting like ```json.
     """
-    
+
+    candidate_models = [
+        'models/gemma-4-26b-a4b-it',
+        'models/gemini-2.0-flash',
+        'models/gemini-1.5-flash-8b',
+        'models/gemini-1.5-flash',
+        'models/gemini-1.5-pro',
+        'models/gemini-2.5-flash'
+    ]
+
+    response = None
+    for m_name in candidate_models:
+        try:
+            model = genai.GenerativeModel(m_name)
+            response = model.generate_content([prompt, img])
+            if response and response.text:
+                break
+        except Exception as err:
+            print(f"[Vision Extraction] Candidate '{m_name}' failed: {err}")
+            continue
+
+    if not response or not response.text:
+        return []
+
     try:
-        response = model.generate_content([prompt, img])
         text = response.text.strip()
         
         # Remove potential markdown json blocks

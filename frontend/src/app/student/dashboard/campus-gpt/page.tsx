@@ -97,7 +97,7 @@ export default function StudentCampusGPT() {
 
   const fetchChats = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/student/chat/history', {
+      const res = await fetch('/api/student/chat/history', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -121,6 +121,7 @@ export default function StudentCampusGPT() {
     setCurrentChatId(null);
     setMessages([]);
     setAttachedFiles([]);
+    setInput('');
   };
 
   const handleSelectChat = (chat: ChatSession) => {
@@ -130,9 +131,16 @@ export default function StudentCampusGPT() {
   };
 
   const uploadFile = async (file: File, id: string) => {
+    let chatId = currentChatId;
+    if (!chatId) {
+      chatId = `chat_${Date.now()}`;
+      setCurrentChatId(chatId);
+    }
+
     const formData = new FormData();
     formData.append('files', file);
     formData.append('user_id', userId!);
+    formData.append('chat_id', chatId);
 
     try {
       // Simulate fast transition from uploading to extracting for UX
@@ -235,6 +243,7 @@ export default function StudentCampusGPT() {
     const asstMsgId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: asstMsgId, role: 'assistant', content: '' }]);
 
+    try {
       const messagePayload = readyFiles.length > 0 
         ? `${userMsg.content} (Attached document: ${readyFiles.map(f => f.name).join(', ')})` 
         : userMsg.content;
@@ -245,14 +254,20 @@ export default function StudentCampusGPT() {
       formData.append('model_id', selectedModelId);
       if (currentChatId) formData.append('chat_id', currentChatId);
       
-      const historyForPython = updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+      const historyForPython = currentChatId ? updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content })) : [];
       formData.append('history', JSON.stringify(historyForPython));
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
 
       const res = await fetch('/api/ai-router/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
+        body: formData.toString(),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) throw new Error('Stream failed');
 
@@ -261,13 +276,15 @@ export default function StudentCampusGPT() {
       let streamedResponse = '';
 
       if (reader) {
+        let sseBuffer = '';
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
@@ -287,6 +304,11 @@ export default function StudentCampusGPT() {
         }
       }
 
+      if (!streamedResponse.trim()) {
+        streamedResponse = "⚠️ No response received from AI model. Please try again.";
+        setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: streamedResponse } : m));
+      }
+
       let activeChatId = currentChatId;
       if (!currentChatId) {
         const newChatId = 'chat_' + Date.now();
@@ -299,7 +321,7 @@ export default function StudentCampusGPT() {
 
       // Save to Database
       try {
-        const saveRes = await fetch('http://localhost:5000/api/student/chat/save', {
+        const saveRes = await fetch('/api/student/chat/save', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -325,8 +347,9 @@ export default function StudentCampusGPT() {
       }
 
     } catch (err) {
-      console.error(err);
-      setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: '⚠️ Streaming error. Check backend connection.' } : m));
+      console.error('Send error:', err);
+      const errMsg = `⚠️ Connection error: ${err instanceof Error ? err.message : 'Unable to stream response'}. Please try again.`;
+      setMessages(prev => prev.map(m => m.id === asstMsgId && !m.content ? { ...m, content: errMsg } : m));
     } finally {
       setIsTyping(false);
     }
@@ -338,11 +361,22 @@ export default function StudentCampusGPT() {
   };
 
   const handleDelete = async (chatId: string) => {
-    setChats(prev => prev.filter(c => c.id !== chatId));
-    if (currentChatId === chatId) {
-      setCurrentChatId(null);
-      setMessages([]);
+    try {
+      await fetch(`/api/student/chat/${chatId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error('Delete chat error:', err);
     }
+
+    setChats(prev => prev.filter(c => c.id !== chatId));
+
+    if (currentChatId === chatId) {
+      handleNewChat();
+    }
+
+    fetchChats();
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -423,7 +457,12 @@ export default function StudentCampusGPT() {
           <div className="text-[10px] font-semibold uppercase tracking-wider opacity-30 px-2 mb-2">
             Chat History
           </div>
-          {filteredChats.map((chat) => (
+          {filteredChats.length === 0 ? (
+            <div className="px-2 py-4 text-xs text-center opacity-50 italic">
+              No chats yet. Start your first conversation with Campus GPT.
+            </div>
+          ) : (
+            filteredChats.map((chat) => (
             <div
               key={chat.id}
               className={`group flex items-center gap-2 px-2 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
@@ -463,7 +502,8 @@ export default function StudentCampusGPT() {
                 </>
               )}
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
 
@@ -537,7 +577,10 @@ export default function StudentCampusGPT() {
                              <Bot size={10} /> Answered by AI
                           </div>
                           {msg.content === '' ? (
-                            <span className="animate-pulse">Thinking...</span>
+                            <div className="flex items-center gap-2 text-xs opacity-80 font-medium py-1 text-blue-400">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Thinking & Generating Response (Local AI)...</span>
+                            </div>
                           ) : (
                             <ReactMarkdown
                               remarkPlugins={[remarkMath, remarkGfm]}

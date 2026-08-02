@@ -167,7 +167,7 @@ export default function TeacherDashboardLayout({
       {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Top Bar */}
-        <header className={`h-14 flex items-center justify-between px-4 border-b flex-shrink-0 ${
+        <header className={`h-14 flex items-center justify-between px-4 border-b flex-shrink-0 relative z-50 ${
           isDark ? 'border-white/5 bg-[#0a0a0c]/80' : 'border-black/5 bg-[#f0f0f5]/80'
         } backdrop-blur-md`}>
           <div className="flex items-center gap-3">

@@ -15,6 +15,9 @@ import {
 import { getWeatherIcon, getWeatherDescription, getWeatherThemeColor } from './weather/AnimatedIcons';
 
 export const WeatherWidget = () => {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -199,7 +202,7 @@ export const WeatherWidget = () => {
   const desc = data ? getWeatherDescription(data.conditionCode) : '';
 
   return (
-    <div className="relative z-[100]" ref={popupRef}>
+    <div className="relative z-[99999]" ref={popupRef}>
       {/* Widget Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
@@ -224,13 +227,15 @@ export const WeatherWidget = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 5, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className={`absolute top-full right-0 mt-3 w-80 rounded-2xl border shadow-2xl backdrop-blur-2xl overflow-hidden bg-background/95 border-foreground/10`}
+            className={`absolute top-full right-0 mt-3 w-80 rounded-2xl border shadow-2xl overflow-hidden z-[99999] ${
+              isDark ? 'bg-[#18181b] text-white border-white/15 shadow-black/90' : 'bg-white text-slate-900 border-slate-200 shadow-2xl'
+            }`}
           >
             {/* Header / Current Weather Display */}
-            <div className={`p-4 ${themeStyle.bg}`}>
+            <div className={`p-4 ${isDark ? 'bg-[#222226]' : 'bg-slate-50'} ${themeStyle.bg}`}>
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-bold text-lg text-foreground truncate">{data.city}</h3>
+                  <h3 className="font-bold text-lg truncate">{data.city}</h3>
                   <p className="text-xs opacity-70 flex items-center gap-1">
                     <Clock size={10} /> Updated {new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </p>
@@ -244,7 +249,7 @@ export const WeatherWidget = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-foreground/10 text-xs">
+              <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-current/10 text-xs">
                 <div className="text-center">
                   <Thermometer size={14} className="mx-auto mb-1 opacity-70" />
                   <span className="font-semibold block">{data.feelsLike}°</span>
@@ -265,7 +270,7 @@ export const WeatherWidget = () => {
             </div>
 
             {/* Search Input */}
-            <div className="p-3 border-b border-foreground/10 relative">
+            <div className={`p-3 border-b relative ${isDark ? 'bg-[#18181b] border-white/10' : 'bg-white border-slate-200'}`}>
               <Search size={14} className="absolute left-6 top-1/2 -translate-y-1/2 opacity-50" />
               <input 
                 autoFocus
@@ -273,13 +278,15 @@ export const WeatherWidget = () => {
                 placeholder="Search city..." 
                 value={searchQuery}
                 onChange={handleSearch}
-                className="w-full bg-foreground/5 rounded-full py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-foreground/40"
+                className={`w-full rounded-full py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
+                  isDark ? 'bg-white/10 text-white placeholder-white/40' : 'bg-slate-100 text-slate-900 placeholder-slate-400'
+                }`}
               />
               {isSearching && <Loader2 size={12} className="absolute right-6 top-1/2 -translate-y-1/2 animate-spin opacity-50" />}
             </div>
 
             {/* Lists Container */}
-            <div className="max-h-[250px] overflow-y-auto p-2 scrollbar-thin">
+            <div className={`max-h-[250px] overflow-y-auto p-2 scrollbar-thin ${isDark ? 'bg-[#18181b]' : 'bg-white'}`}>
               {searchQuery.length > 0 ? (
                 // Search Results
                 <div className="space-y-1">

@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const axios = require('axios');
 const { generateResponse } = require('../services/ai.service');
 
 // ─── Dashboard ───────────────────────────────────────────────────
@@ -263,10 +264,26 @@ const renameChat = async (req, res, next) => {
 
 const deleteChat = async (req, res, next) => {
   try {
-    await prisma.chat.deleteMany({
-      where: { id: req.params.id, userId: req.user.id }
-    });
-    res.json({ success: true });
+    const chatId = req.params.id;
+    if (!chatId) return res.status(400).json({ error: 'Chat ID required' });
+
+    if (!chatId.startsWith('chat_')) {
+      await prisma.chat.deleteMany({
+        where: { id: chatId, userId: req.user.id }
+      });
+    }
+
+    // Purge vector store embeddings for this chat_id in Python AI microservice
+    try {
+      await axios.post('http://127.0.0.1:8000/api/ai/chat/delete', 
+        new URLSearchParams({ user_id: req.user.id, chat_id: chatId }).toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+    } catch (aiErr) {
+      console.warn('[AI Service Memory Purge Warning]:', aiErr.message);
+    }
+
+    res.json({ success: true, message: 'Chat permanently deleted' });
   } catch (error) {
     next(error);
   }

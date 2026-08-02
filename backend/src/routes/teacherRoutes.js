@@ -38,7 +38,7 @@ router.post('/chat', teacherChat);
 router.post('/chat/save', require('../controllers/teacherController').saveStreamedChat);
 router.get('/chat/history', getTeacherChats);
 router.put('/chat/:id', validateUUID(), renameChat);
-router.delete('/chat/:id', validateUUID(), deleteChat);
+router.delete('/chat/:id', deleteChat);
 
 module.exports = router;
 

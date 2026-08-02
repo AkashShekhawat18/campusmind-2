@@ -97,7 +97,7 @@ export default function TeacherCampusGPT() {
 
   const fetchChats = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/teacher/chat/history', {
+      const res = await fetch('/api/teacher/chat/history', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -121,6 +121,7 @@ export default function TeacherCampusGPT() {
     setCurrentChatId(null);
     setMessages([]);
     setAttachedFiles([]);
+    setInput('');
   };
 
   const handleSelectChat = (chat: ChatSession) => {
@@ -130,9 +131,16 @@ export default function TeacherCampusGPT() {
   };
 
   const uploadFile = async (file: File, id: string) => {
+    let chatId = currentChatId;
+    if (!chatId) {
+      chatId = `chat_${Date.now()}`;
+      setCurrentChatId(chatId);
+    }
+
     const formData = new FormData();
     formData.append('files', file);
     formData.append('user_id', userId);
+    formData.append('chat_id', chatId);
 
     try {
       // Simulate fast transition from uploading to extracting for UX
@@ -140,7 +148,7 @@ export default function TeacherCampusGPT() {
         setAttachedFiles(prev => prev.map(f => f.id === id && f.status === 'uploading' ? { ...f, status: 'extracting' } : f));
       }, 500);
 
-      const res = await fetch('http://localhost:5000/api/ai/upload', {
+      const res = await fetch('/api/ai/upload', {
         method: 'POST',
         body: formData
       });
@@ -246,14 +254,20 @@ export default function TeacherCampusGPT() {
       formData.append('model_id', selectedModelId);
       if (currentChatId) formData.append('chat_id', currentChatId);
       
-      const historyForPython = updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+      const historyForPython = currentChatId ? updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content })) : [];
       formData.append('history', JSON.stringify(historyForPython));
 
-      const res = await fetch('http://localhost:5000/api/ai-router/stream', {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+
+      const res = await fetch('/api/ai-router/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
+        body: formData.toString(),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         const errText = await res.text();
@@ -266,13 +280,15 @@ export default function TeacherCampusGPT() {
       let streamedResponse = '';
 
       if (reader) {
+        let sseBuffer = '';
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
@@ -292,6 +308,11 @@ export default function TeacherCampusGPT() {
         }
       }
 
+      if (!streamedResponse.trim()) {
+        streamedResponse = "⚠️ No response received from AI model. Please try again.";
+        setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: streamedResponse } : m));
+      }
+
       let activeChatId = currentChatId;
       if (!currentChatId) {
         const newChatId = 'chat_' + Date.now();
@@ -304,7 +325,7 @@ export default function TeacherCampusGPT() {
 
       // Save to Database
       try {
-        const saveRes = await fetch('http://localhost:5000/api/teacher/chat/save', {
+        const saveRes = await fetch('/api/teacher/chat/save', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -330,8 +351,9 @@ export default function TeacherCampusGPT() {
       }
 
     } catch (err) {
-      console.error(err);
-      setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: '⚠️ Streaming error. Check backend connection.' } : m));
+      console.error('Send error:', err);
+      const errMsg = `⚠️ Connection error: ${err instanceof Error ? err.message : 'Unable to stream response'}. Please try again.`;
+      setMessages(prev => prev.map(m => m.id === asstMsgId && !m.content ? { ...m, content: errMsg } : m));
     } finally {
       setIsTyping(false);
     }
@@ -343,11 +365,22 @@ export default function TeacherCampusGPT() {
   };
 
   const handleDelete = async (chatId: string) => {
-    setChats(prev => prev.filter(c => c.id !== chatId));
-    if (currentChatId === chatId) {
-      setCurrentChatId(null);
-      setMessages([]);
+    try {
+      await fetch(`/api/teacher/chat/${chatId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error('Delete chat error:', err);
     }
+
+    setChats(prev => prev.filter(c => c.id !== chatId));
+
+    if (currentChatId === chatId) {
+      handleNewChat();
+    }
+
+    fetchChats();
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -428,7 +461,12 @@ export default function TeacherCampusGPT() {
           <div className="text-[10px] font-semibold uppercase tracking-wider opacity-30 px-2 mb-2">
             Chat History
           </div>
-          {filteredChats.map((chat) => (
+          {filteredChats.length === 0 ? (
+            <div className="px-2 py-4 text-xs text-center opacity-50 italic">
+              No chats yet. Start your first conversation with Campus GPT.
+            </div>
+          ) : (
+            filteredChats.map((chat) => (
             <div
               key={chat.id}
               className={`group flex items-center gap-2 px-2 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
@@ -468,7 +506,8 @@ export default function TeacherCampusGPT() {
                 </>
               )}
             </div>
-          ))}
+          ))
+          )}
         </div>
       </div>
 
@@ -542,7 +581,10 @@ export default function TeacherCampusGPT() {
                              <Bot size={10} /> Answered by AI
                           </div>
                           {msg.content === '' ? (
-                            <span className="animate-pulse">Thinking...</span>
+                            <div className="flex items-center gap-2 text-xs opacity-80 font-medium py-1 text-blue-400">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Thinking & Generating Response (Local AI)...</span>
+                            </div>
                           ) : (
                             <ReactMarkdown
                               remarkPlugins={[remarkMath, remarkGfm]}
