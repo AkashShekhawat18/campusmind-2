@@ -1,66 +1,17 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-
-const preprocessLatex = (text: string): string => {
-  if (!text) return '';
-  let processed = text.replace(/\\\( ([\s\S]*?) \\\)/g, '$$$1$$');
-  processed = processed.replace(/\\\((.*?)\\\)/g, '$$$1$$');
-  processed = processed.replace(/\\\[ ([\s\S]*?) \\\]/g, '$$$$\n$1\n$$$$');
-  processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$\n$1\n$$$$');
-  return processed;
-};
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useDropzone } from 'react-dropzone';
-import {
-  Search, MessageSquare, Plus, Send, Bot, Trash2,
-  Edit3, Check, X, Copy, CheckCheck, Paperclip, FileText, Image as ImageIcon,
-  FileSpreadsheet, Presentation, FileCode, File, XCircle, Loader2, CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
-import { ModelSelector } from '@/components/chat/ModelSelector';
+import { File } from 'lucide-react';
 import { PremiumLockPopup } from '@/components/chat/PremiumLockPopup';
 
-type UploadStatus = 'uploading' | 'extracting' | 'ready' | 'error';
-
-type UploadedFile = { 
-  id: string; 
-  name: string; 
-  size?: number;
-  status: UploadStatus;
-  document_id?: string;
-  error?: string;
-  previewUrl?: string;
-};
-
-type Message = { id: string; role: 'user' | 'assistant'; content: string; files?: UploadedFile[] };
-type ChatSession = { id: string; title: string; messages: Message[]; createdAt?: string };
-
-const formatBytes = (bytes?: number) => {
-  if (!bytes) return 'Unknown size';
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-};
-
-const getFileIcon = (filename: string, className?: string) => {
-  const ext = filename.split('.').pop()?.toLowerCase();
-  if (['pdf', 'txt', 'md', 'docx', 'doc'].includes(ext || '')) return <FileText className={className || "text-blue-400"} />;
-  if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext || '')) return <ImageIcon className={className || "text-purple-400"} />;
-  if (['xlsx', 'xls', 'csv'].includes(ext || '')) return <FileSpreadsheet className={className || "text-green-400"} />;
-  if (['pptx', 'ppt'].includes(ext || '')) return <Presentation className={className || "text-orange-400"} />;
-  if (['json', 'js', 'py', 'ts', 'html', 'css'].includes(ext || '')) return <FileCode className={className || "text-yellow-400"} />;
-  return <File className={className || "text-gray-400"} />;
-};
+import { ChatSession, Message, UploadedFile } from './components/types';
+import { ChatSidebar } from './components/ChatSidebar';
+import { ChatArea } from './components/ChatArea';
+import { PromptInput } from './components/PromptInput';
+import { DocumentSidebar } from './components/DocumentSidebar';
 
 export default function TeacherCampusGPT() {
   const { resolvedTheme } = useTheme();
@@ -75,14 +26,13 @@ export default function TeacherCampusGPT() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<string>('auto');
   const [showPremiumLock, setShowPremiumLock] = useState(false);
   
-  // Advanced Upload States
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
+  const [isDocSidebarOpen, setIsDocSidebarOpen] = useState(false);
+  const [isChatSidebarOpen, setIsChatSidebarOpen] = useState(true);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const token = typeof window !== 'undefined' ? localStorage.getItem('teacherToken') : null;
   const userId = (typeof window !== 'undefined' && localStorage.getItem('teacherId')) || 'demo-user';
 
@@ -90,10 +40,6 @@ export default function TeacherCampusGPT() {
     setMounted(true);
     fetchChats();
   }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping, attachedFiles]);
 
   const fetchChats = async () => {
     try {
@@ -143,7 +89,6 @@ export default function TeacherCampusGPT() {
     formData.append('chat_id', chatId);
 
     try {
-      // Simulate fast transition from uploading to extracting for UX
       setTimeout(() => {
         setAttachedFiles(prev => prev.map(f => f.id === id && f.status === 'uploading' ? { ...f, status: 'extracting' } : f));
       }, 500);
@@ -158,7 +103,7 @@ export default function TeacherCampusGPT() {
       try {
         data = JSON.parse(text);
       } catch (e) {
-        throw new Error(`Server error: ${text.substring(0, 50)}...`);
+        throw new Error(`Server error`);
       }
       
       if (res.ok && data.results && data.results[0]?.status === 'success') {
@@ -173,7 +118,6 @@ export default function TeacherCampusGPT() {
         setAttachedFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', error: data.results[0].reason || 'Extraction failed' } : f));
       }
     } catch (err) {
-      console.error(err);
       setAttachedFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', error: 'Network error' } : f));
     }
   };
@@ -181,7 +125,6 @@ export default function TeacherCampusGPT() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
-    // Immediately add all files to UI with "uploading" status
     const newFiles: UploadedFile[] = acceptedFiles.map(file => ({
       id: Math.random().toString(36).substring(7),
       name: file.name,
@@ -192,7 +135,6 @@ export default function TeacherCampusGPT() {
 
     setAttachedFiles(prev => [...prev, ...newFiles]);
 
-    // Process each upload independently so UI updates per-file
     acceptedFiles.forEach((file, index) => {
       uploadFile(file, newFiles[index].id);
     });
@@ -205,7 +147,6 @@ export default function TeacherCampusGPT() {
     multiple: true
   });
 
-  // Handle Paste Event for Images
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       if (e.clipboardData?.files && e.clipboardData.files.length > 0) {
@@ -216,28 +157,84 @@ export default function TeacherCampusGPT() {
     return () => window.removeEventListener('paste', handlePaste);
   }, [onDrop]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if the user is typing in an input (except for specific shortcuts)
+      const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
+      // Cmd/Ctrl + K or Cmd/Ctrl + / : Focus chat input
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === '/')) {
+        e.preventDefault();
+        const input = document.getElementById('chat-prompt-input');
+        if (input) input.focus();
+      }
+
+      // Cmd/Ctrl + Shift + O : New chat
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        handleNewChat();
+      }
+
+      // Cmd/Ctrl + \ : Toggle Chat Sidebar
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        setIsChatSidebarOpen(prev => !prev);
+      }
+
+      // Cmd/Ctrl + . : Toggle Document Sidebar
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        setIsDocSidebarOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const removeAttachedFile = (id: string) => {
     setAttachedFiles(prev => prev.filter(f => f.id !== id));
   };
 
   const isUploadingAny = attachedFiles.some(f => f.status === 'uploading' || f.status === 'extracting');
 
-  const handleSend = async () => {
-    // Only send if there's text or fully ready files, and nothing is currently uploading
-    const readyFiles = attachedFiles.filter(f => f.status === 'ready');
-    if ((!input.trim() && readyFiles.length === 0) || isTyping || isUploadingAny) return;
+  const handleSendSuggestion = (prompt: string) => {
+    setInput(prompt);
+    // Use setTimeout to ensure state is updated before sending
+    setTimeout(() => {
+      executeSend(prompt, attachedFiles);
+    }, 10);
+  };
+
+  const handleEditMessage = (prompt: string) => {
+    setInput(prompt);
+    setTimeout(() => {
+      const inputEl = document.getElementById('chat-prompt-input');
+      if (inputEl) {
+        inputEl.focus();
+      }
+    }, 50);
+  };
+
+  const handleSend = () => {
+    executeSend(input, attachedFiles);
+  };
+
+  const executeSend = async (currentInput: string, currentFiles: UploadedFile[]) => {
+    const readyFiles = currentFiles.filter(f => f.status === 'ready');
+    if ((!currentInput.trim() && readyFiles.length === 0) || isTyping || isUploadingAny) return;
 
     const userMsg: Message = { 
       id: Date.now().toString(), 
       role: 'user', 
-      content: input.trim() || 'Please analyze the attached file(s).',
+      content: currentInput.trim() || 'Please analyze the attached file(s).',
       files: [...readyFiles]
     };
     
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
-    setAttachedFiles(prev => prev.filter(f => f.status !== 'ready')); // Clear ready files, keep errors if any
+    setAttachedFiles(prev => prev.filter(f => f.status !== 'ready'));
     setIsTyping(true);
 
     const asstMsgId = (Date.now() + 1).toString();
@@ -258,7 +255,7 @@ export default function TeacherCampusGPT() {
       formData.append('history', JSON.stringify(historyForPython));
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
 
       const res = await fetch('/api/ai-router/stream', {
         method: 'POST',
@@ -270,9 +267,7 @@ export default function TeacherCampusGPT() {
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        const errText = await res.text();
-        console.error("Stream failed with status", res.status, errText);
-        throw new Error('Stream failed: ' + res.status + ' ' + errText);
+        throw new Error('Stream failed');
       }
 
       const reader = res.body?.getReader();
@@ -301,7 +296,7 @@ export default function TeacherCampusGPT() {
                   break;
                 }
               } catch (e) {
-                // Ignore parse errors on incomplete chunks
+                // Ignore parse errors
               }
             }
           }
@@ -309,7 +304,7 @@ export default function TeacherCampusGPT() {
       }
 
       if (!streamedResponse.trim()) {
-        streamedResponse = "⚠️ No response received from AI model. Please try again.";
+        streamedResponse = "⚠️ No response received from AI model.";
         setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: streamedResponse } : m));
       }
 
@@ -323,7 +318,6 @@ export default function TeacherCampusGPT() {
         setChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: [...updatedMessages, { id: asstMsgId, role: 'assistant', content: streamedResponse }] } : c));
       }
 
-      // Save to Database
       try {
         const saveRes = await fetch('/api/teacher/chat/save', {
           method: 'POST',
@@ -340,20 +334,15 @@ export default function TeacherCampusGPT() {
         
         if (saveRes.ok) {
           const saveData = await saveRes.json();
-          // Update the temporary chat_id to the real database UUID if it was a new chat
           if (activeChatId && activeChatId.startsWith('chat_')) {
             setCurrentChatId(saveData.chatId);
             setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, id: saveData.chatId } : c));
           }
         }
-      } catch (saveErr) {
-        console.error('Failed to save chat to database:', saveErr);
-      }
+      } catch (saveErr) {}
 
     } catch (err) {
-      console.error('Send error:', err);
-      const errMsg = `⚠️ Connection error: ${err instanceof Error ? err.message : 'Unable to stream response'}. Please try again.`;
-      setMessages(prev => prev.map(m => m.id === asstMsgId && !m.content ? { ...m, content: errMsg } : m));
+      setMessages(prev => prev.map(m => m.id === asstMsgId && !m.content ? { ...m, content: 'Connection error' } : m));
     } finally {
       setIsTyping(false);
     }
@@ -370,23 +359,9 @@ export default function TeacherCampusGPT() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (err) {
-      console.error('Delete chat error:', err);
-    }
-
+    } catch (err) {}
     setChats(prev => prev.filter(c => c.id !== chatId));
-
-    if (currentChatId === chatId) {
-      handleNewChat();
-    }
-
-    fetchChats();
-  };
-
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    if (currentChatId === chatId) handleNewChat();
   };
 
   const handleModelSelect = (id: string, isPremium: boolean) => {
@@ -397,12 +372,11 @@ export default function TeacherCampusGPT() {
     setSelectedModelId(id);
   };
 
-  const filteredChats = chats.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()));
-
   return (
-    <div className={`flex h-[calc(100vh-3.5rem)] overflow-hidden ${isDark ? 'bg-[#0a0a0c]' : 'bg-[#f0f0f5]'}`} {...getRootProps()}>
+    <div className={`flex h-[calc(100vh-3.5rem)] overflow-hidden ${isDark ? 'bg-[#0a0a0c]' : 'bg-[#f8f9fa]'}`} {...getRootProps()}>
       <PremiumLockPopup isOpen={showPremiumLock} onClose={() => setShowPremiumLock(false)} />
       <input title="File upload" placeholder="Upload files" aria-label="Upload files" {...getInputProps()} />
+      
       {/* Drag Overlay */}
       <AnimatePresence>
         {isDragActive && (
@@ -412,12 +386,12 @@ export default function TeacherCampusGPT() {
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           >
-            <div className="bg-[#111113] border border-blue-500/50 rounded-3xl p-12 flex flex-col items-center shadow-2xl shadow-blue-500/20">
-              <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mb-6">
-                <File size={40} className="text-blue-400" />
+            <div className="bg-[#111113] border border-indigo-500/50 rounded-3xl p-12 flex flex-col items-center shadow-2xl shadow-indigo-500/20">
+              <div className="w-24 h-24 bg-indigo-500/20 rounded-full flex items-center justify-center mb-6">
+                <File size={48} className="text-indigo-400" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Drop files to attach</h2>
-              <p className="text-white/50 text-center max-w-sm">
+              <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">Drop files to attach</h2>
+              <p className="text-white/60 text-center max-w-sm font-medium">
                 PDFs, DOCX, TXT, Excel, PPT, and Images are supported.
               </p>
             </div>
@@ -425,331 +399,57 @@ export default function TeacherCampusGPT() {
         )}
       </AnimatePresence>
 
-      {/* Chat Sidebar */}
-      <div className={`w-[260px] flex-shrink-0 flex flex-col border-r h-full z-10 ${
-        isDark ? 'bg-[#111113] border-white/5' : 'bg-[#e8e8ed] border-black/5'
-      }`}>
-        <div className="p-3">
-          <button
-            onClick={handleNewChat}
-            className={`flex items-center gap-2 w-full p-3 rounded-xl border transition-all ${
-              isDark ? 'border-white/10 hover:bg-white/5 text-white' : 'border-black/10 hover:bg-black/5 text-black'
-            }`}
-          >
-            <Plus size={18} />
-            <span className="text-sm font-medium">New Chat</span>
-          </button>
+      <ChatSidebar
+        isDark={isDark}
+        isOpen={isChatSidebarOpen}
+        setIsOpen={setIsChatSidebarOpen}
+        chats={chats}
+        currentChatId={currentChatId}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        handleNewChat={handleNewChat}
+        handleSelectChat={handleSelectChat}
+        editingChatId={editingChatId}
+        setEditingChatId={setEditingChatId}
+        editTitle={editTitle}
+        setEditTitle={setEditTitle}
+        handleRename={handleRename}
+        handleDelete={handleDelete}
+      />
+
+      <div className="flex-1 flex h-full relative z-10 overflow-hidden">
+        <div className="flex-1 flex flex-col h-full relative z-10">
+          <ChatArea
+            isDark={isDark}
+            messages={messages}
+            isTyping={isTyping}
+            openDropzone={open}
+            onSendSuggestion={handleSendSuggestion}
+            onEditMessage={handleEditMessage}
+          />
+          
+          <PromptInput
+            isDark={isDark}
+            input={input}
+            setInput={setInput}
+            handleSend={handleSend}
+            isTyping={isTyping}
+            isUploadingAny={isUploadingAny}
+            attachedFiles={attachedFiles}
+            removeAttachedFile={removeAttachedFile}
+            openDropzone={open}
+            selectedModelId={selectedModelId}
+            handleModelSelect={handleModelSelect}
+          />
         </div>
 
-        {/* Search */}
-        <div className="px-3 mb-2">
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-            <Search size={14} className="opacity-40" />
-            <input
-              title="Search chats"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chats..."
-              className="flex-1 bg-transparent border-none outline-none text-xs"
-            />
-          </div>
-        </div>
-
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-1" data-lenis-prevent>
-          <div className="text-[10px] font-semibold uppercase tracking-wider opacity-30 px-2 mb-2">
-            Chat History
-          </div>
-          {filteredChats.length === 0 ? (
-            <div className="px-2 py-4 text-xs text-center opacity-50 italic">
-              No chats yet. Start your first conversation with Campus GPT.
-            </div>
-          ) : (
-            filteredChats.map((chat) => (
-            <div
-              key={chat.id}
-              className={`group flex items-center gap-2 px-2 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
-                currentChatId === chat.id
-                  ? (isDark ? 'bg-white/10 text-white' : 'bg-black/10 text-black')
-                  : (isDark ? 'text-white/60 hover:bg-white/5 hover:text-white' : 'text-black/60 hover:bg-black/5 hover:text-black')
-              }`}
-            >
-              {editingChatId === chat.id ? (
-                <div className="flex items-center gap-1 flex-1">
-                    <input
-                      title="Edit chat title"
-                      placeholder="Chat title"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="flex-1 bg-transparent border-none outline-none text-xs"
-                      autoFocus
-                      onKeyDown={(e) => e.key === 'Enter' && handleRename(chat.id)}
-                    />
-                    <button title="Confirm rename" aria-label="Confirm rename" onClick={() => handleRename(chat.id)}><Check size={12} className="text-green-400" /></button>
-                    <button title="Cancel rename" aria-label="Cancel rename" onClick={() => setEditingChatId(null)}><X size={12} className="text-red-400" /></button>
-                  </div>
-              ) : (
-                <>
-                  <MessageSquare size={14} className="opacity-40 flex-shrink-0" />
-                  <span className="flex-1 truncate text-xs" onClick={() => handleSelectChat(chat)}>
-                    {chat.title}
-                  </span>
-                  <div className="hidden group-hover:flex items-center gap-1">
-                    <button title="Rename chat" aria-label="Rename chat" onClick={() => { setEditingChatId(chat.id); setEditTitle(chat.title); }}>
-                      <Edit3 size={12} className="opacity-40 hover:opacity-100" />
-                    </button>
-                    <button title="Delete chat" aria-label="Delete chat" onClick={() => handleDelete(chat.id)}>
-                      <Trash2 size={12} className="opacity-40 hover:opacity-100 text-red-400" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))
-          )}
-        </div>
-      </div>
-
-      {/* Main Chat */}
-      <div className="flex-1 flex flex-col h-full relative z-10">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-12 lg:px-20 py-8" data-lenis-prevent>
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center opacity-60">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-6 shadow-xl shadow-blue-500/20">
-                <Bot size={32} className="text-white" />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">CampusGPT — Advanced RAG</h2>
-              <p className="text-sm opacity-50 max-w-md text-center mb-8">
-                Upload multiple documents, paste images directly, or drop folders to begin analyzing.
-              </p>
-              
-              <div className="grid grid-cols-2 gap-4 max-w-xl w-full">
-                <div onClick={open} className={`p-4 rounded-xl border border-dashed cursor-pointer transition-all hover:scale-105 flex flex-col items-center text-center ${isDark ? 'border-white/20 hover:border-blue-400 hover:bg-blue-500/10' : 'border-black/20 hover:border-blue-500 hover:bg-blue-50'}`}>
-                  <File size={24} className="mb-2 text-blue-400" />
-                  <span className="text-sm font-medium">Upload Documents</span>
-                  <span className="text-xs opacity-50">PDF, DOCX, TXT, Excel</span>
-                </div>
-                <div onClick={open} className={`p-4 rounded-xl border border-dashed cursor-pointer transition-all hover:scale-105 flex flex-col items-center text-center ${isDark ? 'border-white/20 hover:border-purple-400 hover:bg-purple-500/10' : 'border-black/20 hover:border-purple-500 hover:bg-purple-50'}`}>
-                  <Paperclip size={24} className="mb-2 text-purple-400" />
-                  <span className="text-sm font-medium">Upload Images</span>
-                  <span className="text-xs opacity-50">Scans, Charts, Paste (Ctrl+V)</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6 max-w-4xl mx-auto w-full pb-64">
-              <AnimatePresence>
-                {messages.map((msg) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {msg.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
-                        <Bot size={16} className="text-white" />
-                      </div>
-                    )}
-                    <div className={`relative group max-w-[80%] ${
-                      msg.role === 'user'
-                        ? `px-5 py-3.5 rounded-2xl shadow-sm ${isDark ? 'bg-[#2a2a2c] text-white' : 'bg-[#e4e4eb] text-black'}`
-                        : `px-5 py-3.5 rounded-2xl ${isDark ? 'bg-transparent text-white border border-white/10' : 'bg-white text-black border border-black/5'}`
-                    }`}>
-                      
-                      {/* Attached files history display */}
-                      {msg.role === 'user' && msg.files && msg.files.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {msg.files.map(f => (
-                            <div key={f.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${isDark ? 'bg-[#111113]/50 border-white/10' : 'bg-white/50 border-black/10'}`}>
-                              {getFileIcon(f.name, "w-4 h-4")}
-                              <div className="flex flex-col">
-                                <span className="text-xs font-semibold max-w-[120px] truncate">{f.name}</span>
-                                <span className="text-[9px] opacity-60 font-medium">DOCUMENT</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                          {/* Display the badge */}
-                          <div className="text-[10px] uppercase font-bold tracking-wide opacity-50 mb-2 flex items-center gap-1">
-                             <Bot size={10} /> Answered by AI
-                          </div>
-                          {msg.content === '' ? (
-                            <div className="flex items-center gap-2 text-xs opacity-80 font-medium py-1 text-blue-400">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>Thinking & Generating Response (Local AI)...</span>
-                            </div>
-                          ) : (
-                            <ReactMarkdown
-                              remarkPlugins={[remarkMath, remarkGfm]}
-                              rehypePlugins={[rehypeKatex]}
-                              components={{
-                                code({ className, children, ...props }) {
-                                  const match = /language-(\w+)/.exec(className || '');
-                                  const codeStr = String(children).replace(/\n$/, '');
-                                  return match ? (
-                                    <div className="relative group/code my-3">
-                                      <button
-                                        title="Copy code"
-                                        aria-label="Copy code"
-                                        onClick={() => handleCopy(codeStr, msg.id + match[1])}
-                                        className="absolute top-2 right-2 p-1.5 rounded-md bg-white/10 opacity-0 group-hover/code:opacity-100 transition-opacity"
-                                      >
-                                        {copiedId === msg.id + match[1] ? <CheckCheck size={12} className="text-green-400" /> : <Copy size={12} />}
-                                      </button>
-                                      <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" className="rounded-xl !bg-[#1a1a1c] !text-sm">
-                                        {codeStr}
-                                      </SyntaxHighlighter>
-                                    </div>
-                                  ) : (
-                                    <code className={`px-1.5 py-0.5 rounded-md text-sm ${isDark ? 'bg-white/10' : 'bg-black/10'}`} {...props}>
-                                      {children}
-                                    </code>
-                                  );
-                                }
-                              }}
-                            >
-                              {preprocessLatex(msg.content)}
-                            </ReactMarkdown>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="whitespace-pre-wrap">{msg.content}</span>
-                      )}
-                    </div>
-                    {msg.role === 'user' && (
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 shadow-md font-bold text-xs ${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`}>
-                        T
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-
-        {/* Input & Upload Cards */}
-        <div className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t ${isDark ? 'from-[#0a0a0c] via-[#0a0a0c]' : 'from-[#f0f0f5] via-[#f0f0f5]'} to-transparent pb-6 pt-32 pointer-events-none`}>
-          <div className="max-w-4xl mx-auto pointer-events-auto">
-            
-            {/* Advanced File Cards UI */}
-            {attachedFiles.length > 0 && (
-              <div className="flex gap-3 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10">
-                <AnimatePresence>
-                  {attachedFiles.map(file => (
-                    <motion.div 
-                      key={file.id} 
-                      initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-                      className={`relative flex-shrink-0 w-56 p-3 rounded-2xl border shadow-lg group ${
-                        isDark ? 'bg-[#1a1a1c]/90 border-white/10 backdrop-blur-md' : 'bg-white/90 border-black/10 backdrop-blur-md'
-                      } ${file.status === 'error' ? 'border-red-500/50' : ''}`}
-                    >
-                      <button 
-                        title="Remove file"
-                        aria-label="Remove file"
-                        onClick={() => removeAttachedFile(file.id)} 
-                        className={`absolute -top-2 -right-2 p-1 rounded-full shadow-md transition-opacity opacity-0 group-hover:opacity-100 ${
-                          isDark ? 'bg-[#2a2a2c] text-white hover:bg-red-500' : 'bg-white text-black hover:bg-red-50 hover:text-red-500'
-                        }`}
-                      >
-                        <X size={12} />
-                      </button>
-                      
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                          {file.previewUrl ? (
-                            <img src={file.previewUrl} alt="preview" className="w-full h-full object-cover" />
-                          ) : (
-                            getFileIcon(file.name, "w-6 h-6")
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate mb-0.5">{file.name}</p>
-                          <p className="text-[10px] opacity-50 truncate">{formatBytes(file.size)}</p>
-                          
-                          <div className="mt-2 flex items-center gap-1.5">
-                            {file.status === 'uploading' && (
-                              <><Loader2 size={10} className="animate-spin text-blue-400" /><span className="text-[10px] font-medium text-blue-400">Uploading...</span></>
-                            )}
-                            {file.status === 'extracting' && (
-                              <><Loader2 size={10} className="animate-spin text-purple-400" /><span className="text-[10px] font-medium text-purple-400">Processing & Chunking...</span></>
-                            )}
-                            {file.status === 'ready' && (
-                              <><CheckCircle2 size={10} className="text-green-400" /><span className="text-[10px] font-medium text-green-400">Ready to query</span></>
-                            )}
-                            {file.status === 'error' && (
-                              <><AlertCircle size={10} className="text-red-400" /><span className="text-[10px] font-medium text-red-400 truncate max-w-[80px]" title={file.error}>{file.error}</span></>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* Chat Input Bar and Model Selector */}
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center px-1">
-                <ModelSelector selectedModelId={selectedModelId} onModelSelect={handleModelSelect} />
-                <div className="text-[10px] opacity-40 font-medium tracking-wide uppercase">
-                  Powered by CampusMind AI Router
-                </div>
-              </div>
-
-              <div className={`relative flex items-center rounded-2xl border shadow-lg overflow-hidden ${
-                isDark ? 'bg-[#1a1a1c] border-white/10 shadow-black/50' : 'bg-white border-black/10 shadow-black/5'
-              } focus-within:ring-1 focus-within:ring-blue-500/50 transition-shadow p-1.5`}>
-                
-                <button
-                  onClick={open}
-                  className={`p-2.5 rounded-xl transition-all opacity-60 hover:opacity-100 ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
-                  title="Attach files (PDF, DOCX, Excel, Images)"
-                >
-                  <Plus size={20} />
-                </button>
-
-                <input
-                  title="Chat input"
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Ask CampusGPT anything or drop files here..."
-                  className="flex-1 bg-transparent border-none outline-none px-3 py-3 text-[15px]"
-                />
-                
-                <button
-                  title="Send message"
-                  aria-label="Send message"
-                  onClick={handleSend}
-                  disabled={(!input.trim() && attachedFiles.filter(f => f.status === 'ready').length === 0) || isTyping || isUploadingAny}
-                  className={`p-3 rounded-xl transition-all flex items-center gap-2 ${
-                    (input.trim() || attachedFiles.filter(f => f.status === 'ready').length > 0) && !isTyping && !isUploadingAny
-                      ? (isDark ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800')
-                      : 'opacity-30 cursor-not-allowed'
-                  }`}
-                >
-                  <Send size={18} />
-                </button>
-              </div>
-            </div>
-            <div className="text-center mt-3 text-xs opacity-40">
-              CampusGPT Teacher Mode • Powered by Groq + ChromaDB RAG
-            </div>
-          </div>
-        </div>
+        <DocumentSidebar 
+          isDark={isDark}
+          isOpen={isDocSidebarOpen}
+          setIsOpen={setIsDocSidebarOpen}
+          // Pass all files that have ever been uploaded to this chat context
+          files={messages.flatMap(m => m.files || [])}
+        />
       </div>
     </div>
   );

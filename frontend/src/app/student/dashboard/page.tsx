@@ -78,7 +78,7 @@ export default function StudentDashboard() {
       {/* Welcome */}
       <motion.div variants={itemVariants} className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
-          Welcome back{typeof window !== 'undefined' && localStorage.getItem('studentName') ? `, ${localStorage.getItem('studentName')?.split(' ')[0]}` : ''} 👋
+          Welcome back{mounted && typeof window !== 'undefined' && localStorage.getItem('studentName') ? `, ${localStorage.getItem('studentName')?.split(' ')[0]}` : ''} 👋
         </h1>
         <p className={`text-sm ${isDark ? 'text-white/50' : 'text-black/50'}`}>
           Ready to supercharge your study session?

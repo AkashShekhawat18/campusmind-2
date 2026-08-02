@@ -7,18 +7,48 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import {
   LayoutDashboard, MessageSquare, FileText, BookOpen,
-  Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles, Brain
-, CalendarDays} from 'lucide-react';
+  Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles, Brain,
+  CalendarDays, ClipboardList, ChevronDown, PlusCircle, Wand2,
+  BookCheck, HelpCircle, PenTool, FileCheck, Clock, CheckCircle2,
+  BarChart3, Bot, FileCog
+} from 'lucide-react';
 import { WeatherWidget } from '@/components/widgets/WeatherWidget';
 
 const sidebarItems = [
   { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
   { label: 'Campus GPT', href: '/teacher/dashboard/campus-gpt', icon: MessageSquare },
+];
+
+const assessmentCenterItems = [
+  { label: 'Dashboard', href: '/teacher/dashboard/assessment-center', icon: LayoutDashboard },
+  { label: 'Create Assessment', href: '/teacher/dashboard/assessment-center/create', icon: PlusCircle },
+  { label: 'AI Generator', href: '/teacher/dashboard/assessment-center/ai-generator', icon: Wand2 },
+  { label: 'Assignments', href: '/teacher/dashboard/assessment-center/assignments', icon: BookCheck },
+  { label: 'Quiz Generator', href: '/teacher/dashboard/assessment-center/quiz-generator', icon: HelpCircle },
+  { label: 'Test Paper Generator', href: '/teacher/dashboard/assessment-center/test-generator', icon: PenTool },
+  { label: 'AI Assessment Assistant', href: '/teacher/dashboard/assessment-center/assistant', icon: Bot },
+  { label: 'Drafts', href: '/teacher/dashboard/assessment-center/drafts', icon: FileCog },
+  { label: 'Active', href: '/teacher/dashboard/assessment-center/active', icon: FileCheck },
+  { label: 'Scheduled', href: '/teacher/dashboard/assessment-center/scheduled', icon: Clock },
+  { label: 'Completed', href: '/teacher/dashboard/assessment-center/completed', icon: CheckCircle2 },
+  { label: 'Results', href: '/teacher/dashboard/assessment-center/results', icon: FileText },
+  { label: 'Analytics', href: '/teacher/dashboard/assessment-center/analytics', icon: BarChart3 },
+  { label: 'Settings', href: '/teacher/dashboard/assessment-center/settings', icon: Settings },
+];
+
+const sidebarItemsAfter = [
   { label: 'Calendar', href: '/teacher/dashboard/calendar', icon: CalendarDays },
   { label: 'BITS Pilani Resources', href: '/teacher/dashboard/resources', icon: BookOpen },
   { label: 'PYQ Analyzer', href: '/teacher/dashboard/pyq-analyzer', icon: Brain },
   { label: 'PYQ Library', href: '/teacher/dashboard/pyq-library', icon: FileText },
   { label: 'Settings', href: '/teacher/dashboard/settings', icon: Settings },
+];
+
+// Combined flat list for top bar breadcrumb lookup
+const allNavItems = [
+  ...sidebarItems,
+  ...assessmentCenterItems,
+  ...sidebarItemsAfter,
 ];
 
 export default function TeacherDashboardLayout({
@@ -34,6 +64,14 @@ export default function TeacherDashboardLayout({
   const [teacherName, setTeacherName] = useState('');
 
   const isDark = mounted ? resolvedTheme === 'dark' : true;
+
+  // Auto-expand assessment center when any sub-route is active
+  const isAssessmentRoute = pathname.startsWith('/teacher/dashboard/assessment-center');
+  const [assessmentOpen, setAssessmentOpen] = useState(isAssessmentRoute);
+
+  useEffect(() => {
+    if (isAssessmentRoute) setAssessmentOpen(true);
+  }, [isAssessmentRoute]);
 
   useEffect(() => {
     setMounted(true);
@@ -51,6 +89,41 @@ export default function TeacherDashboardLayout({
     localStorage.removeItem('teacherName');
     localStorage.removeItem('teacherEmail');
     router.push('/teacher/login');
+  };
+
+  // Resolve current page label for top bar breadcrumb
+  const getCurrentLabel = () => {
+    if (isAssessmentRoute) {
+      const sub = assessmentCenterItems.find(i => pathname === i.href);
+      return sub ? `Assessment Center › ${sub.label}` : 'Assessment Center';
+    }
+    const match = [...sidebarItems, ...sidebarItemsAfter].find(i => pathname === i.href || pathname.startsWith(i.href + '/'));
+    return match?.label || 'Dashboard';
+  };
+
+  // Render a single sidebar nav item (shared between all sections)
+  const renderNavItem = (item: { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }) => {
+    const isActive = pathname === item.href;
+    const Icon = item.icon;
+    return (
+      <Link key={item.href} href={item.href}>
+        <motion.div
+          whileHover={{ x: 4 }}
+          whileTap={{ scale: 0.98 }}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+            isActive
+              ? (isDark ? 'bg-white/10 text-white shadow-lg shadow-white/5' : 'bg-black/10 text-black shadow-lg')
+              : (isDark ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-black/60 hover:text-black hover:bg-black/5')
+          }`}
+        >
+          <Icon size={18} className={isActive ? (isDark ? 'text-blue-400' : 'text-blue-600') : ''} />
+          {item.label}
+          {isActive && (
+            <ChevronRight size={14} className="ml-auto opacity-40" />
+          )}
+        </motion.div>
+      </Link>
+    );
   };
 
   return (
@@ -96,29 +169,75 @@ export default function TeacherDashboardLayout({
 
             {/* Navigation */}
             <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-              {sidebarItems.map((item) => {
-                const isActive = pathname === item.href;
-                const Icon = item.icon;
-                return (
-                  <Link key={item.href} href={item.href}>
+              {/* Top items: Dashboard, Campus GPT */}
+              {sidebarItems.map(renderNavItem)}
+
+              {/* Assessment Center - Collapsible Group */}
+              <div className="pt-1">
+                <motion.button
+                  onClick={() => setAssessmentOpen(!assessmentOpen)}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                    isAssessmentRoute
+                      ? (isDark ? 'bg-white/10 text-white shadow-lg shadow-white/5' : 'bg-black/10 text-black shadow-lg')
+                      : (isDark ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-black/60 hover:text-black hover:bg-black/5')
+                  }`}
+                >
+                  <ClipboardList size={18} className={isAssessmentRoute ? (isDark ? 'text-blue-400' : 'text-blue-600') : ''} />
+                  Assessment Center
+                  <motion.div
+                    animate={{ rotate: assessmentOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="ml-auto"
+                  >
+                    <ChevronDown size={14} className="opacity-40" />
+                  </motion.div>
+                </motion.button>
+
+                <AnimatePresence initial={false}>
+                  {assessmentOpen && (
                     <motion.div
-                      whileHover={{ x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                        isActive
-                          ? (isDark ? 'bg-white/10 text-white shadow-lg shadow-white/5' : 'bg-black/10 text-black shadow-lg')
-                          : (isDark ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-black/60 hover:text-black hover:bg-black/5')
-                      }`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      className="overflow-hidden"
                     >
-                      <Icon size={18} className={isActive ? (isDark ? 'text-blue-400' : 'text-blue-600') : ''} />
-                      {item.label}
-                      {isActive && (
-                        <ChevronRight size={14} className="ml-auto opacity-40" />
-                      )}
+                      <div className={`ml-3 pl-3 mt-1 space-y-0.5 border-l ${
+                        isDark ? 'border-white/5' : 'border-black/5'
+                      }`}>
+                        {assessmentCenterItems.map((item) => {
+                          const isActive = pathname === item.href;
+                          const Icon = item.icon;
+                          return (
+                            <Link key={item.href} href={item.href}>
+                              <motion.div
+                                whileHover={{ x: 4 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all cursor-pointer ${
+                                  isActive
+                                    ? (isDark ? 'bg-white/10 text-white shadow-lg shadow-white/5' : 'bg-black/10 text-black shadow-lg')
+                                    : (isDark ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-black/50 hover:text-black hover:bg-black/5')
+                                }`}
+                              >
+                                <Icon size={16} className={isActive ? (isDark ? 'text-blue-400' : 'text-blue-600') : ''} />
+                                {item.label}
+                                {isActive && (
+                                  <ChevronRight size={12} className="ml-auto opacity-40" />
+                                )}
+                              </motion.div>
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </motion.div>
-                  </Link>
-                );
-              })}
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Remaining items: Calendar, Resources, PYQ Analyzer, PYQ Library, Settings */}
+              {sidebarItemsAfter.map(renderNavItem)}
             </nav>
 
             {/* Bottom Actions */}
@@ -184,7 +303,7 @@ export default function TeacherDashboardLayout({
             <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
               isDark ? 'bg-white/5' : 'bg-black/5'
             }`}>
-              {sidebarItems.find(i => pathname.startsWith(i.href))?.label || 'Dashboard'}
+              {getCurrentLabel()}
             </div>
           </div>
           <div className="flex items-center">

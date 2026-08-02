@@ -8,7 +8,7 @@ import { useTheme } from 'next-themes';
 import {
   LayoutDashboard, MessageSquare, BookOpen, FileText,
   Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles, UserCircle
-, CalendarDays} from 'lucide-react';
+, CalendarDays, ClipboardList} from 'lucide-react';
 import { WeatherWidget } from '@/components/widgets/WeatherWidget';
 
 const sidebarItems = [
@@ -17,6 +17,7 @@ const sidebarItems = [
   { label: 'Calendar', href: '/student/dashboard/calendar', icon: CalendarDays },
   { label: 'BITS Pilani Resources', href: '/student/dashboard/resources', icon: BookOpen },
   { label: 'PYQ Library', href: '/student/dashboard/pyq-library', icon: FileText },
+  { label: 'Assignments', href: '/student/dashboard/assignments', icon: ClipboardList },
   { label: 'Profile', href: '/student/dashboard/profile', icon: UserCircle },
   { label: 'Settings', href: '/student/dashboard/settings', icon: Settings },
 ];

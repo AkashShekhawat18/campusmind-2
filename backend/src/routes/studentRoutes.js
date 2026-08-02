@@ -20,6 +20,7 @@ const {
 } = require('../controllers/studentController');
 
 const { getEvents } = require('../controllers/calendarController');
+const { getStudentAssessments, getAssessmentForAttempt, submitAssessment } = require('../controllers/studentAssessmentController');
 
 const router = express.Router();
 
@@ -53,7 +54,12 @@ router.get('/chat/history', getStudentChats);
 router.put('/chat/:id', validateUUID(), renameChat);
 router.delete('/chat/:id', deleteChat);
 
-module.exports = router;
-
 // Calendar Route
 router.get('/calendar/schedule', getEvents);
+
+// Assessments
+router.get('/assessments', getStudentAssessments);
+router.get('/assessments/:id', validateUUID(), getAssessmentForAttempt);
+router.post('/assessments/:id/submit', validateUUID(), submitAssessment);
+
+module.exports = router;
