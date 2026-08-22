@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CampusMind | Infinite Learning",
+  title: "MALPHOR | Infinite Learning",
   description: "A premium AI-powered educational ecosystem.",
 };
 

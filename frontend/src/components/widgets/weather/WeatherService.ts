@@ -1,6 +1,6 @@
 import { WeatherData, LocationSearchResult } from './types';
 
-const CACHE_KEY = 'campusmind_weather_cache';
+const CACHE_KEY = 'malphor_weather_cache';
 export const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export const fetchIpLocation = async () => {
@@ -89,7 +89,7 @@ export const setCachedWeather = (weather: WeatherData) => {
 
 export const getSavedLocations = (key: 'recent' | 'favorites'): LocationSearchResult[] => {
   try {
-    const data = localStorage.getItem(`campusmind_weather_${key}`);
+    const data = localStorage.getItem(`malphor_weather_${key}`);
     return data ? JSON.parse(data) : [];
   } catch (e) {
     return [];
@@ -106,7 +106,7 @@ export const saveLocation = (key: 'recent' | 'favorites', location: LocationSear
     if (key === 'recent') {
       current = current.slice(0, 5); // Keep only last 5 for recent
     }
-    localStorage.setItem(`campusmind_weather_${key}`, JSON.stringify(current));
+    localStorage.setItem(`malphor_weather_${key}`, JSON.stringify(current));
   } catch (e) {
     console.error(`Failed to save ${key} location`, e);
   }
@@ -116,6 +116,6 @@ export const removeFavorite = (id: number) => {
   try {
     let current = getSavedLocations('favorites');
     current = current.filter(loc => loc.id !== id);
-    localStorage.setItem(`campusmind_weather_favorites`, JSON.stringify(current));
+    localStorage.setItem(`malphor_weather_favorites`, JSON.stringify(current));
   } catch(e) {}
 }

@@ -6,7 +6,7 @@ async function delay(ms) {
 }
 
 async function runBenchmarks() {
-  console.log("=== CampusMind Comprehensive DB Benchmark & Stress Test ===");
+  console.log("=== MALPHOR Comprehensive DB Benchmark & Stress Test ===");
   
   // Determine current size
   let userCount = await prisma.user.count();

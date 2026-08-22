@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { ChevronLeft, Bot, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Bot, MessageSquare, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import PYQChatbot from '@/components/PYQChatbot';
@@ -24,8 +24,12 @@ export default function TeacherPYQAnalyzer() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
   
   // History State
-  const [history, setHistory] = useState<AnalysisHistoryItem[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+
+  // Real progress state — driven by backend SSE events
+  const [currentStage, setCurrentStage] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Replacements State
   const [replacements, setReplacements] = useState<Record<number, { text: string, reasoning: string, loading: boolean }>>({});
@@ -64,6 +68,8 @@ export default function TeacherPYQAnalyzer() {
   const handleAnalyze = async (files: File[]) => {
     if (files.length === 0) return;
     setIsAnalyzing(true);
+    setCurrentStage(null);
+    setAnalysisError(null);
     
     try {
       // Process sequentially to respect backend limits
@@ -73,30 +79,70 @@ export default function TeacherPYQAnalyzer() {
         formData.append("file", file);
         
         const token = localStorage.getItem("teacherToken");
-        const res = await fetch(`http://localhost:5000/api/pyq/analyze`, {
+        const res = await fetch(`http://localhost:5000/api/pyq/analyze/stream`, {
           method: 'POST',
           headers: { "Authorization": `Bearer ${token}` },
           body: formData
         });
         
-        if (res.ok) {
-          lastReport = await res.json();
-        } else {
+        if (!res.ok) {
           console.error(`Failed to analyze ${file.name}`);
+          setAnalysisError(`Server returned ${res.status}. Please try again.`);
+          continue;
+        }
+
+        // Read SSE stream
+        const reader = res.body?.getReader();
+        if (!reader) {
+          setAnalysisError('Stream not available.');
+          continue;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const jsonStr = trimmed.slice(6); // Remove 'data: ' prefix
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.stage === 'ERROR') {
+                setAnalysisError(parsed.error || 'An unknown error occurred.');
+              } else if (parsed.stage === 'COMPLETED' && parsed.result) {
+                lastReport = parsed.result;
+                setCurrentStage('COMPLETED');
+              } else if (parsed.stage) {
+                setCurrentStage(parsed.stage);
+              }
+            } catch (parseErr) {
+              // Skip malformed SSE lines
+            }
+          }
         }
       }
 
       if (lastReport) {
+        // Brief pause to let user see "Completed" state
+        await new Promise(resolve => setTimeout(resolve, 500));
         setReport(lastReport);
         fetchHistory();
-      } else {
-        alert("Failed to analyze files.");
+        setAnalysisError(null);
       }
     } catch (e) {
       console.error(e);
-      alert("Error analyzing files.");
+      setAnalysisError('Network error. Please check your connection.');
     } finally {
       setIsAnalyzing(false);
+      setCurrentStage(null);
     }
   };
 
@@ -108,7 +154,9 @@ export default function TeacherPYQAnalyzer() {
       });
       if (res.ok) {
         const data = await res.json();
-        setReport({ ...data.similarityResult, analysisId: id });
+        // The backend returns the full History record, so we need to spread data.similarityResult
+        // to populate the AnalysisReport type correctly.
+        setReport({ ...(data.similarityResult || {}), analysisId: id });
         setSearchTerm('');
         setFilterType('ALL');
       } else {
@@ -201,6 +249,19 @@ export default function TeacherPYQAnalyzer() {
     });
   }, [report, filterType, searchTerm]);
 
+  useEffect(() => {
+    if (report && report.similarityResults) {
+      const extractedCount = report.summary?.matchCounts ? 
+        Object.values(report.summary.matchCounts).reduce((a, b) => a + b, 0) : 
+        (report.analytics?.totalQuestions || report.similarityResults.length);
+      
+      const renderCount = report.similarityResults.length;
+      if (extractedCount !== renderCount) {
+        console.warn(`[Validation Warning] Total Extracted Questions (${extractedCount}) does not match Rendered Questions (${renderCount}).`);
+      }
+    }
+  }, [report]);
+
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center mb-6">
@@ -223,9 +284,29 @@ export default function TeacherPYQAnalyzer() {
             exit={{ opacity: 0, y: -20 }}
             className="flex flex-col md:flex-row gap-6 relative"
           >
-            {isAnalyzing && (
+            {(isAnalyzing || analysisError) && (
               <div className="absolute inset-0 z-50 bg-black/20 dark:bg-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center p-4">
-                <ProgressIndicator isAnalyzing={isAnalyzing} isDark={isDark} />
+                {analysisError && !isAnalyzing ? (
+                  /* Error state after pipeline has stopped */
+                  <div className={`w-full max-w-md mx-auto p-6 rounded-2xl border shadow-xl text-center ${isDark ? 'bg-[#111113] border-white/10' : 'bg-white border-black/10'}`}>
+                    <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                      <X className="w-7 h-7 text-red-500" />
+                    </div>
+                    <h3 className="text-lg font-bold text-red-500 mb-2">Analysis Failed</h3>
+                    <p className={`text-sm mb-6 ${isDark ? 'text-white/60' : 'text-black/60'}`}>
+                      {analysisError}
+                    </p>
+                    <button
+                      onClick={() => setAnalysisError(null)}
+                      className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${isDark ? 'bg-white/10 hover:bg-white/15 text-white' : 'bg-black/5 hover:bg-black/10 text-black'}`}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ) : (
+                  /* Active progress indicator */
+                  <ProgressIndicator isAnalyzing={isAnalyzing} currentStage={currentStage} error={analysisError} isDark={isDark} />
+                )}
               </div>
             )}
             

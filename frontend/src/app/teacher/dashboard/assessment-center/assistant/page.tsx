@@ -13,7 +13,7 @@ interface Message {
 }
 
 const MarkdownRenderer = ({ content }: { content: string }) => {
-  // basic markdown rendering or just return text for now, but usually CampusMind has a Markdown block.
+  // basic markdown rendering or just return text for now, but usually MALPHOR has a Markdown block.
   // We'll just render it as white-space pre-wrap text since we don't have react-markdown imported in this snippet directly,
   // but let's assume it's just raw text with markdown formatting for the scope of this step.
   return <div className="whitespace-pre-wrap">{content}</div>;

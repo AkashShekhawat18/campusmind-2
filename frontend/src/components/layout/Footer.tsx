@@ -12,13 +12,13 @@ export function Footer() {
           <h1 
             className="text-[11vw] font-bold tracking-tighter leading-none text-foreground w-full text-center select-none bg-gradient-to-b from-foreground to-foreground/50 bg-clip-text text-transparent"
           >
-            CampusMind
+            MALPHOR
           </h1>
         </div>
         
         {/* Bottom Footer */}
         <div className="mt-16 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 font-medium pt-8 border-t border-foreground/5">
-          <p className="mb-4 md:mb-0">© {new Date().getFullYear()} CampusMind Inc. All rights reserved.</p>
+          <p className="mb-4 md:mb-0">© {new Date().getFullYear()} MALPHOR Inc. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
             <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>

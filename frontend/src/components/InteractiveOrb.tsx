@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { MeshDistortMaterial, Float } from '@react-three/drei';
 import * as THREE from 'three';
+import { CanvasErrorBoundary } from '@/components/ui/CanvasErrorBoundary';
 
 function OrbMesh() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -39,10 +40,12 @@ function OrbMesh() {
 export function InteractiveOrb() {
   return (
     <div className="w-full h-full min-h-[400px] flex items-center justify-center pointer-events-auto">
-      <Canvas camera={{ position: [0, 0, 5] }}>
-        <ambientLight intensity={0.5} />
-        <OrbMesh />
-      </Canvas>
+      <CanvasErrorBoundary>
+        <Canvas camera={{ position: [0, 0, 5] }}>
+          <ambientLight intensity={0.5} />
+          <OrbMesh />
+        </Canvas>
+      </CanvasErrorBoundary>
     </div>
   );
 }

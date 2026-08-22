@@ -13,8 +13,8 @@ export const WEBSITE_KNOWLEDGE_BASE: KBEntry[] = [
     id: 'login',
     category: 'Authentication',
     keywords: ['login', 'sign in', 'log in', 'access account', 'portal login', 'student login', 'teacher login', 'admin login'],
-    title: 'CampusMind Portals & Login',
-    content: 'You can log into your respective CampusMind portal from the top navigation bar or using the direct links below:',
+    title: 'MALPHOR Portals & Login',
+    content: 'You can log into your respective MALPHOR portal from the top navigation bar or using the direct links below:',
     actionUrl: '/student/login',
     actionLabel: 'Go to Student Login'
   },
@@ -23,7 +23,7 @@ export const WEBSITE_KNOWLEDGE_BASE: KBEntry[] = [
     category: 'Authentication',
     keywords: ['register', 'signup', 'sign up', 'create account', 'join', 'student register', 'teacher register', 'new account'],
     title: 'Account Registration',
-    content: 'New to CampusMind? You can register as a Student or Teacher to access personalized learning dashboards:',
+    content: 'New to MALPHOR? You can register as a Student or Teacher to access personalized learning dashboards:',
     actionUrl: '/student/register',
     actionLabel: 'Register as Student'
   },
@@ -84,18 +84,18 @@ export const WEBSITE_KNOWLEDGE_BASE: KBEntry[] = [
   {
     id: 'features',
     category: 'Overview',
-    keywords: ['features', 'what can campusmind do', 'capabilities', 'platform overview', 'why campusmind', 'tools'],
-    title: 'CampusMind Features',
-    content: 'CampusMind features include Interactive 3D Malphor Assistant, CampusGPT RAG Chat, 6D PYQ Analyzer, Weather & Location Widget, Admin ERP, and Real-Time Voice Synthesis.',
+    keywords: ['features', 'what can malphor do', 'capabilities', 'platform overview', 'why malphor', 'tools'],
+    title: 'MALPHOR Features',
+    content: 'MALPHOR features include Interactive 3D Malphor Assistant, CampusGPT RAG Chat, 6D PYQ Analyzer, Weather & Location Widget, Admin ERP, and Real-Time Voice Synthesis.',
     actionUrl: '#features',
     actionLabel: 'View All Features'
   },
   {
     id: 'about',
     category: 'Information',
-    keywords: ['about', 'about campusmind', 'mission', 'who built campusmind', 'overview', 'info'],
-    title: 'About CampusMind',
-    content: 'CampusMind is a next-generation AI-powered institutional ecosystem built for modern universities, empowering students and faculty with intelligent tools.',
+    keywords: ['about', 'about malphor', 'mission', 'who built malphor', 'overview', 'info'],
+    title: 'About MALPHOR',
+    content: 'MALPHOR is a next-generation AI-powered institutional ecosystem built for modern universities, empowering students and faculty with intelligent tools.',
     actionUrl: '#about',
     actionLabel: 'Read About Us'
   },
@@ -104,7 +104,7 @@ export const WEBSITE_KNOWLEDGE_BASE: KBEntry[] = [
     category: 'Support',
     keywords: ['contact', 'help', 'support team', 'email support', 'reach out', 'feedback', 'issue'],
     title: 'Contact & Support',
-    content: 'Need assistance or have feedback? Reach out to your institutional IT admin or click below to contact CampusMind support.',
+    content: 'Need assistance or have feedback? Reach out to your institutional IT admin or click below to contact MALPHOR support.',
     actionUrl: '#contact',
     actionLabel: 'Contact Support'
   },
@@ -139,9 +139,9 @@ export function detectMalphorIntent(userQuery: string): MalphorIntent {
 
   // 2. High relevance keyword checking
   const websiteIntentTerms = [
-    'campusmind', 'login', 'register', 'signup', 'sign in', 'log in',
+    'malphor', 'login', 'register', 'signup', 'sign in', 'log in',
     'student portal', 'teacher portal', 'admin portal', 'campusgpt',
-    'pyq analyzer', 'navigation', 'contact support', 'about campusmind',
+    'pyq analyzer', 'navigation', 'contact support', 'about malphor',
     'website features', 'how do i log in', 'where is the login', 'where is the portal'
   ];
 

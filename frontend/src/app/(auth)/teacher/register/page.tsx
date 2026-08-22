@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { User } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { COLLEGES, getDepartmentsForCollege } from '@/lib/academicData';
 
 export default function TeacherRegister() {
   const [submitted, setSubmitted] = useState(false);
@@ -85,26 +87,25 @@ export default function TeacherRegister() {
           <label className="block text-sm font-medium text-foreground/70 mb-1">Official ID / Faculty No.</label>
           <input type="text" value={officialId} onChange={e => setOfficialId(e.target.value)} required className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="FAC-2026-001" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground/70 mb-1">College</label>
-          <select value={college} onChange={e => setCollege(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors appearance-none">
-            <option value="BITS Pilani">BITS Pilani</option>
-            <option value="IIT Bombay">IIT Bombay</option>
-            <option value="NIT Trichy">NIT Trichy</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground/70 mb-1">Department/Branch</label>
-          <select value={branch} onChange={e => setBranch(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors appearance-none">
-            <option value="Information Technology">Information Technology (IT)</option>
-            <option value="Computer Science">Computer Science (CS)</option>
-            <option value="Electrical Engineering">Electrical Engineering (EE)</option>
-            <option value="Mechanical Engineering">Mechanical Engineering (ME)</option>
-          </select>
-        </div>
+        <SearchableSelect
+          label="College"
+          options={COLLEGES}
+          value={college}
+          onChange={setCollege}
+          placeholder="Select your college"
+          themeColor="electric-violet"
+        />
+        <SearchableSelect
+          label="Department/Branch"
+          options={getDepartmentsForCollege(college)}
+          value={branch}
+          onChange={setBranch}
+          placeholder="Select your department"
+          themeColor="electric-violet"
+        />
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Email</label>
-          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="jane@campusmind.edu" />
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-electric-violet transition-colors" placeholder="jane@malphor.edu" />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Phone Number</label>

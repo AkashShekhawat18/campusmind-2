@@ -49,7 +49,7 @@ export const PremiumLockPopup: React.FC<PremiumLockPopupProps> = ({ isOpen, onCl
               </h2>
               
               <p className="text-white/60 text-sm mb-8">
-                Create a CampusMind account to access the world's most powerful AI models.
+                Create a MALPHOR account to access the world's most powerful AI models.
               </p>
 
               <div className="w-full space-y-3 mb-8">

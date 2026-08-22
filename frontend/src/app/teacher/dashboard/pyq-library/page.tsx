@@ -255,7 +255,7 @@ export default function TeacherPYQLibrary() {
                 </button>
                 <button className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/10'}`} onClick={(e) => {
                   e.stopPropagation();
-                  window.open(paper.fileUrl, '_blank');
+                  window.open(`http://localhost:5000/api/pyq/preview/${paper.id}`, '_blank');
                 }}>
                   <BookOpen size={16} /> View
                 </button>

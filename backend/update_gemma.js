@@ -10,12 +10,12 @@ async function main() {
     await prisma.aIModel.update({
       where: { id: existingModel.id },
       data: {
-        modelName: 'llama-3.1-8b-instant',
-        displayName: 'Llama 3.1 8B (Free)',
-        description: 'Fast, lightweight Llama model for quick responses and simple tasks.',
+        modelName: 'openai/gpt-oss-20b',
+        displayName: 'GPT-OSS 20B',
+        description: 'Fast, highly capable GPT-OSS 20B model for accurate text and reasoning tasks.',
       }
     });
-    console.log('Successfully updated decommissioned gemma model to llama-3.1-8b-instant.');
+    console.log('Successfully updated decommissioned gemma model to openai/gpt-oss-20b.');
   } else {
     console.log('Model not found, maybe already updated.');
   }

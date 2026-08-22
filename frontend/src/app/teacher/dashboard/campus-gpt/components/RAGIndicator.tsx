@@ -55,7 +55,7 @@ export function RAGIndicator({ isDark, onComplete }: RAGIndicatorProps) {
                   <Icon size={16} className={idx < RAG_STEPS.length - 1 ? 'animate-pulse' : ''} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold uppercase tracking-wider opacity-50">CampusMind AI</span>
+                  <span className="text-xs font-bold uppercase tracking-wider opacity-50">MALPHOR AI</span>
                   <span className="text-sm font-semibold">{step.label}...</span>
                 </div>
               </motion.div>

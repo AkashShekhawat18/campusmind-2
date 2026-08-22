@@ -78,7 +78,7 @@ class AnswerAgent:
             
             res = self.groq_client.chat.completions.create(
                 messages=messages,
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 temperature=0.0, # Zero temperature for RAG grounding
                 max_tokens=2048
             )

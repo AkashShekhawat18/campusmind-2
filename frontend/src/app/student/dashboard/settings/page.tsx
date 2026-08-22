@@ -87,7 +87,7 @@ export default function StudentSettings() {
           Preferences
         </h1>
         <p className={`text-sm mb-8 ${isDark ? 'text-white/50' : 'text-black/50'}`}>
-          Customize your CampusMind experience.
+          Customize your MALPHOR experience.
         </p>
 
         <div className={`rounded-2xl border p-6 md:p-8 space-y-8 ${isDark ? 'bg-[#111113] border-white/5' : 'bg-white border-black/5'}`}>

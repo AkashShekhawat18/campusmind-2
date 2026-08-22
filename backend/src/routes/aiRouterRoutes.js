@@ -12,32 +12,35 @@ router.post('/stream', async (req, res) => {
     
     console.log(`\n[AI Router Route] Received model_id="${model_id}", user_id="${user_id}", chat_id="${chat_id || ''}"`);
     
-    // 1. Get model config
-    const modelConfig = await getModelConfig(model_id, message);
-    const isLocalModel = modelConfig?.provider?.providerType === 'Local' || modelConfig?.provider?.providerSlug === 'ollama';
-    console.log(`[AI Router Route] Resolved modelConfig: provider="${modelConfig?.provider?.providerSlug}", model="${modelConfig?.modelName}", displayName="${modelConfig?.displayName}"`);
-
-    // 2. Fetch context from Python RAG service
-    let contextData = [];
-    try {
-      console.log(`[AI Router] Fetching RAG context for user_id="${user_id}", chat_id="${chat_id || ''}", message="${(message || '').substring(0, 50)}"`);
-      const pythonRes = await axios.post('http://127.0.0.1:8000/api/ai/context', 
-        new URLSearchParams({
-          message: message || '',
-          user_id: user_id || '',
-          chat_id: chat_id || ''
-        }).toString(),
-        {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        }
-      );
-      if (pythonRes.data && pythonRes.data.context) {
-        contextData = pythonRes.data.context;
+    // 1 + 2. Fetch model config AND RAG context in PARALLEL for minimum latency
+    const ragFetch = axios.post('http://127.0.0.1:8001/api/ai/context', 
+      new URLSearchParams({
+        message: message || '',
+        user_id: user_id || '',
+        chat_id: chat_id || ''
+      }).toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 3000  // Don't let RAG block the stream for more than 3s
       }
-      console.log(`[AI Router] RAG context length: ${typeof contextData === 'string' ? contextData.length : JSON.stringify(contextData).length}`);
-    } catch (e) {
-      console.error("Warning: Failed to fetch RAG context from Python:", e.message);
+    ).catch(e => {
+      console.warn("[AI Router] RAG context fetch failed (non-blocking):", e.message);
+      return null;
+    });
+
+    const [modelConfig, ragRes] = await Promise.all([
+      getModelConfig(model_id, message),
+      ragFetch
+    ]);
+
+    const isLocalModel = modelConfig?.provider?.providerType === 'Local' || modelConfig?.provider?.providerSlug === 'ollama';
+
+    let contextData = [];
+    if (ragRes?.data?.context) {
+      contextData = ragRes.data.context;
     }
+    const ctxLen = typeof contextData === 'string' ? contextData.length : 0;
+    console.log(`[AI Router] provider="${modelConfig?.provider?.providerSlug}", model="${modelConfig?.modelName}", RAG context length: ${ctxLen}`);
 
     // 3. Assemble prompt
     let docContextStr = '';
@@ -52,9 +55,10 @@ router.post('/stream', async (req, res) => {
     if (isLocalModel) {
       // think:false in the Ollama API disables Qwen3 reasoning, no need for /no_think in prompt
       const modelDisplayName = modelConfig?.displayName || modelConfig?.modelName || 'Local AI';
-      systemPrompt = `You are CampusGPT, powered by ${modelDisplayName}. You are a helpful AI assistant for students and teachers. If asked which model you are, say you are "${modelDisplayName}" running locally via CampusMind. Answer naturally and concisely. Use markdown formatting. Use LaTeX for math ($inline$, $$display$$). Never fabricate information.${docContextStr ? `\n\nDocument Context:\n${docContextStr}` : ''}`;
+      systemPrompt = `You are CampusGPT, powered by ${modelDisplayName}. You are a helpful AI assistant for students and teachers. If asked which model you are, say you are "${modelDisplayName}" running locally via MALPHOR. Answer naturally and concisely. Use markdown formatting. Use LaTeX for math ($inline$, $$display$$). Never fabricate information.${docContextStr ? `\n\nDocument Context:\n${docContextStr}` : ''}`;
     } else {
       systemPrompt = `You are CampusGPT, an advanced multimodal AI assistant for students, teachers, researchers, developers, and educators.
+You are powered by ${modelConfig?.displayName || modelConfig?.modelName || 'an advanced AI model'} running on the MALPHOR platform.
 
 Your behaviour should feel natural, intelligent, conversational, and helpful—similar in quality to modern frontier AI assistants.
 
@@ -188,7 +192,7 @@ Never reference another chat.
 KNOWLEDGE BASE & SOURCE DISCLOSURE
 ==================================================
 
-• You have access to the user's persistent CampusMind Knowledge Base via retrieved document context below.
+• You have access to the user's persistent MALPHOR Knowledge Base via retrieved document context below.
 • Answer questions naturally using retrieved knowledge without exposing previous chat sessions.
 • NEVER say:
   - "I remember your previous chat."
@@ -197,7 +201,7 @@ KNOWLEDGE BASE & SOURCE DISCLOSURE
   - "Based on your previous chat..."
 • Always answer naturally as if the information is part of your inherent intelligence.
 • ONLY if the user explicitly asks "Where did you get this information?" or "What is your source?", answer:
-  "The information comes from documents available in your CampusMind knowledge base."
+  "The information comes from documents available in your MALPHOR knowledge base."
 
 ==================================================
 PERSONALITY

@@ -17,7 +17,7 @@ async function testKnowledgeBase() {
 
   const neuroflowContent = `--- NEUROFLOW AI ARCHITECTURE SPECIFICATION ---
 Product Name: NeuroFlow AI
-Overview: NeuroFlow AI is a real-time neural network visualization, monitoring, and telemetry platform developed by CampusMind.
+Overview: NeuroFlow AI is a real-time neural network visualization, monitoring, and telemetry platform developed by MALPHOR.
 Key Features:
 1. Dynamic Layer Inspection: Real-time weight and gradient flow tracking across deep neural networks.
 2. Anomaly Detection: Automated alerts when loss function diverges or gradients explode.

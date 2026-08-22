@@ -1,0 +1,82 @@
+[
+  {
+    "q_num": "1",
+    "text": "(1 point) Suppose you have a 2-qubit basis state |b, 0⟩, with unknown bit b ∈{0, 1}, and\nyou’d like to copy the classical bit b into the second qubit (overwriting the |0⟩). How can you\ndo this using only Hadamard gates and controlled-Z gates?"
+  },
+  {
+    "q_num": "2",
+    "text": "(2.5 points) This exercise is about efficiently finding the gradient ∇f(z) of a function f :\nRd → R at a point z ∈ Rd. The gradient is the d-dimensional real vector of the d partial\nderivatives ∂f/∂xi, evaluated at the point z.\ncan be written with n bits of precision.\nSuppose we have a unitary Of that maps\n|x, 0⟩→|x, f(x)⟩ (assume we have enough qubits to write down x and f(x)). Give a\nquantum algorithm to compute b using one application of Of and one application of\nO−1\nf , and some unitaries that do not depend on f.\nHint: Start with a uniform superposition over all x ∈{0, 1}n and end with an inverse QFT. You’re\nallowed to use a unitary like |c⟩�→ e2πic|c⟩ since it does not depend on f.\na, b1, . . . , bd ∈ R. Show that the gradient ∇f(z) is equal to (b1, . . . , bd) for every z ∈ Rd.\nwith n bits of precision. Suppose we have a unitary Of that maps |x1, . . . , xd, 0⟩→\n|x1, . . . , xd, f(x1, . . . , xd)⟩. Give a quantum algorithm that computes the gradient ∇f(z)\nusing one application of Of and O−1\nf , and some unitaries that do not depend on f."
+  },
+  {
+    "q_num": "2a",
+    "text": "Let f(x) = a + bx be a linear function from R to R, where the real number b ∈ [0, 1)"
+  },
+  {
+    "q_num": "2b",
+    "text": "Let f(x1, . . . , xd) = a + b1x1 + · · · + bdxd be a linear function from Rd to R, where"
+  },
+  {
+    "q_num": "2c",
+    "text": "Assume that for the function f in (b), each coefficient bk is ∈ [0, 1) and can be written"
+  },
+  {
+    "q_num": "3",
+    "text": "(1.5 points) Consider the intersection problem from communication complexity: Alice has\ninput x ∈{0, 1}n, Bob has input y ∈{0, 1}n, and they want to find (with success probability\n≥ 2/3) an i such that xi = yi = 1, if such an i exists. We know that using r = O(√n)\nmessages between Alice and Bob, they can solve the intersection problem with O(√n log n)\nqubits of communication (see Section 15.4). We also know that with only r = 1 message\n(i.e., one-way communication) Θ(n) qubits of communication are necessary and sufficient (see\nExercise 15.5). Now suppose we limit them to some r ∈{1, . . . , √n} messages. This r is known\nto Alice and Bob. Show how they can solve the intersection problem with O((n/r) log n)\nqubits of communication."
+  },
+  {
+    "q_num": "4",
+    "text": "(2 points) Suppose you have a classical description of an n-qubit Hamiltonian H that is\nthe sum of m = n2 2-local terms. Assume the eigenvalues of the Hermitian matrix H lie in\n[0, 1), and can all be written exactly with 2 log n bits of precision. You would like to exactly\ndetermine the smallest eigenvalue λmin of H, corresponding to unknown n-qubit eigenstate\n|ψmin⟩. You’re given (as a quantum state) an n-qubit state |ψ⟩ that has a significant overlap\nwith |ψmin⟩: |⟨ψ|ψmin⟩|2 ≥ 0.7. Give a polynomial-size quantum circuit that, with probability\n≥ 2/3, outputs λmin exactly.\nNB: You don’t need to write down the circuit to the last detail; a clear description of the different parts of the\ncircuit (possibly with some reference to details in the lecture notes) suffices."
+  },
+  {
+    "q_num": "5",
+    "text": "(2 points) This question is about the quantum complexity of inverting a permutation, which\nis an important problem in cryptography. Let N be a power of 2 and S = {0, . . . , N − 1}.\nLet x ∈ SN correspond to a permutation on S, meaning that each j ∈ S occurs exactly once\nas an entry of x (so the map i �→ xi is a permutation). Suppose we can query x, i.e., we have\na unitary Ox that maps |i, j⟩→|i, xi + j mod N⟩ for all i, j ∈ S, and we can also apply O−1\nx .\n≥ 2/3, using O(\n√\nN) queries to Ox and O−1\nx ."
+  },
+  {
+    "q_num": "5a",
+    "text": "Show how we can find the unique index i ∈ S for which xi = 0, with success probability"
+  },
+  {
+    "q_num": "5b",
+    "text": "The adversary lower bound of Section 11.3 still works with the following modifications:"
+  },
+  {
+    "q_num": "1",
+    "text": "This copying of a classical bit is exactly a CNOT gate, which (since X = HZH) we can\nimplement as (I ⊗ H)U(I ⊗ H) where U is the controlled-Z gate."
+  },
+  {
+    "q_num": "2",
+    "text": "x ∈{0, 1}n = {0, . . . , N − 1}. Compute f(x) in a second register using Of to obtain\nstate\n1\n√\nN−1\n�\nx=0\n|x⟩|f(x)⟩.\nNow apply unitary |c⟩�→ e2πic|c⟩ to the second register, and apply O−1\nf\nto put the second\nregister back to |0⟩. Thus we obtain the state\nN−1\n�\nx=0\n|x⟩e2πif(x)|0⟩ = e2πia\n�\n1\n√\nN−1\n�\nx=0\ne2πibx|x⟩\nApplying inverse QFT to the first register followed by a measurement in the computa-\ntional basis gives us b.\nindependent of z. Hence ∇f(z) = (b1, . . . , bd) for every z ∈ Rd\n{0, 1}n for each j. This results (after the second query) in state\nx1,...,xd∈{0,1}n\n|x1, . . . , xd⟩e2πif(x1,...,xd)|0⟩\n= e2πia\n�\n1\n√\nN−1\n�\nx1=0\ne2πib1x1|x1⟩\n⊗· · · ⊗\n 1\n√\nN−1\n�\nxd=0\ne2πibdxd|xd⟩\n ⊗|0⟩.\nSeparate inverse QFTs for each of the d n-qubit registers, followed by measurements,\ngive us b1, . . . , bd."
+  },
+  {
+    "q_num": "2a",
+    "text": "Let N = 2n. Use Hadamard gates on |0n⟩ to create a uniform superposition over all"
+  },
+  {
+    "q_num": "2b",
+    "text": "f is linear, so the partial derivative of f w.r.t. the variable xk is just the coefficient bk,"
+  },
+  {
+    "q_num": "2c",
+    "text": "We basically do (a) separately for all d coordinates, using a superposition over xj ∈"
+  },
+  {
+    "q_num": "3",
+    "text": "Alice and Bob divide the n indices into ⌈n/r2⌉ subsets of r2 elements each (the last sub-\nset could have fewer than r2 elements if r2 does not divide n).\nThey run the protocol\nof Section 15.4 in parallel for each of the ⌈n/r2⌉ subsets, and see if one of them finds\nan intersection.\nThis uses O(\n√\nr2) = O(r) messages, each consisting of ⌈n/r2⌉ blocks of\nO(log n) qubits, so each message consists of O(⌈n/r2⌉ log n) qubits.\nThe total communi-\ncation is the number of messages times the communication-per-message, which adds up to\nO(r) · O((n/r2) log n) = O((n/r) log n) qubits. By tweaking the constants in the division into\nsubsets we can make sure the number of messages is exactly r instead of O(r) (though I would\nalready give full points if you end with O(r) messages)."
+  },
+  {
+    "q_num": "4",
+    "text": "Using Hamiltonian simulation (Chapter 9) we can implement the unitary U = e2πiH with a\npolynomial-sized circuit up to very small (even exponentially small in n) error ε. We can also\nimplement powers Ut with a polynomial-sized circuit as long as t itself is at most polynomially\nlarge. Let A be a unitary that does phase estimation with 2 log n bits of precision, using U.\nThe circuit for A still has polynomial size, because the largest power of U that we need\nto implement (in a controlled manner) for phase estimation with 2 log n bits of precision, is\n22 log(n)−1 = O(n2). If we apply A to the state |02 log n⟩|ψmin⟩, then the resulting state would be\n|ϕ⟩ = |n2λmin⟩|ψmin⟩ (up to very small error which is due to the fact that we only implement\nthe Ut’s up to very small error). The multiplication with n2 = 22 log(n) is to convert λmin\n(which lies in [0, 1)) to a binary string of 2 log n bits, since phase estimation gives us the bits\nof λmin. Then the first register would tell us λmin exactly. If instead we start with the state\n|02 log n⟩|ψ⟩, then the resulting state |ϕ′⟩ satisfies |⟨ϕ′|ϕ⟩|2 = |⟨ψ|ψmin⟩|2 ≥ 0.7 because A is\nunitary and hence preserves inner product. Therefore a measurement of the first register of\n|ϕ′⟩ tells us λmin exactly, with probability ≥ 2/3. The difference between 0.7 and 2/3 amply\naccounts for the tiny errors made in Hamiltonian simulation."
+  },
+  {
+    "q_num": "5",
+    "text": "a permutation, z has exactly one 1-bit, which is at the location i where xi = 0. We can\nimplement a phase-query to z using 1 query Ox, a unitary on the query’s target register\nthat puts a −1 in front of |0 . . . 0⟩, and one O−1\nx\n(to set the query’s target register back\nto |0 . . . 0⟩). Now use Grover’s algorithm to find the location of the unique 1-bit in z.\nThis uses T = O(\n√\nN) queries to z and hence T = O(\n√\nN) applications of Ox and O−1\nx .\n(i.e., xi = 0 for even i), and Y be the set of permutations y where 0 sits at an odd location.\nDefine relation R ⊆ X × Y as follows: start with an x ∈ X, suppose 0 sits at location\ni (which is even) and j be an arbitrary odd location; obtain y from x by switching xi\nand xj. Do this for each choice of odd j, so x is in relation with N/2 different y’s. Now\nwe can calculate the parameters of the strengthened adversary bound for the Boolean-\nvalued function that determines whether 0 sits at an odd or even location in x. Clearly\nm0 = m1 = N/2. If (x, y) ∈ R and xi ̸= yi then either xi = 0 (in which case ℓx,i = N/2\nand ℓy,i = 1) or yi = 0 (in which case ℓx,i = 1 and ℓy,i = N/2). This implies ℓmax = N/2.\nThen the strengthened adversary bound implies we need Ω(\n�\nm0m1/ℓmax) = Ω(\n√\nN)\nquantum queries to decide whether 0 sits at an odd or even location i in x. Hence the\nsame lower bound applies to the at-least-as-hard problem of finding that location i."
+  },
+  {
+    "q_num": "5a",
+    "text": "Let z ∈{0, 1}N be a binary string defined by zi = 1 iff xi = 0. Note that because x is"
+  },
+  {
+    "q_num": "5b",
+    "text": "Let the set X consist of those permutations x ∈ SN where the 0 sits at an even location"
+  }
+]

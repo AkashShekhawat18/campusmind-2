@@ -76,7 +76,7 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">System Overview</h1>
-        <p className="text-gray-400">Welcome to the CampusMind Admin Control Center.</p>
+        <p className="text-gray-400">Welcome to the MALPHOR Admin Control Center.</p>
       </div>
 
       {/* Stats Grid */}

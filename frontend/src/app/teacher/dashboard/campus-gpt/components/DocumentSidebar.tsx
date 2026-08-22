@@ -150,7 +150,7 @@ export function DocumentSidebar({ isDark, isOpen, setIsOpen, files }: DocumentSi
             </div>
             
             <div className={`p-4 border-t text-[10px] text-center opacity-40 font-medium ${isDark ? 'border-white/5' : 'border-black/5'}`}>
-              Documents are processed securely via CampusMind RAG Pipeline
+              Documents are processed securely via MALPHOR RAG Pipeline
             </div>
           </motion.div>
         )}

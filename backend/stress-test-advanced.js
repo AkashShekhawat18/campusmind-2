@@ -8,7 +8,7 @@ function getMedian(arr) {
 }
 
 async function runAdvancedTests() {
-  console.log("=== CampusMind DB Final Verification ===");
+  console.log("=== MALPHOR DB Final Verification ===");
 
   // 3. PostgreSQL WAL Check
   console.log("\n--- 3. POSTGRESQL WAL LEVEL ---");

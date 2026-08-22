@@ -193,7 +193,7 @@ const chatStream = async (req, res) => {
     const { message, history } = req.body;
     // We can default to a fast model if not provided, or standard groq model. 
     // Usually 'llama-3.1-70b-versatile' or 'gemini-1.5-flash'. We'll just ask for the best available.
-    const modelConfig = await getModelConfig('llama-3.1-70b-versatile', message);
+    const modelConfig = await getModelConfig('openai/gpt-oss-20b', message);
 
     const systemPrompt = `You are the Assessment Assistant, a highly specialized AI designed exclusively to help teachers create, manage, and evaluate assessments, quizzes, test papers, and assignments. DO NOT act like CampusGPT. DO NOT answer general knowledge questions or assist with general tasks outside the context of assessments. If a user asks something unrelated, politely but firmly state that your capabilities are strictly limited to assessments. Always format your responses in clean Markdown.`;
 
@@ -232,7 +232,7 @@ const generateQuiz = async (req, res) => {
     }
     
     const count = parseInt(questionCount) || 10;
-    const modelConfig = await getModelConfig('llama-3.1-70b-versatile');
+    const modelConfig = await getModelConfig('openai/gpt-oss-20b');
     const keyObject = await getProviderKey(modelConfig.providerId);
     
     if (!keyObject) {

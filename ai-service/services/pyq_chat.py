@@ -4,6 +4,9 @@ from groq import Groq
 from fastapi.responses import StreamingResponse
 import os
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 from services.vector_service import search_global_pyq
 from services.embedding_service import get_embeddings
@@ -29,7 +32,7 @@ async def stream_pyq_chat(
     """
     client = get_groq_client()
     
-    system_prompt = """You are MALPHOR (CampusMind AI), an expert academic professor and PYQ (Previous Year Question) analyzer.
+    system_prompt = """You are MALPHOR (MALPHOR AI), an expert academic professor and PYQ (Previous Year Question) analyzer.
     You analyze exam papers, identify trends, explain concepts, and provide actionable insights.
     
     CRITICAL INSTRUCTIONS FOR ACCURACY:
@@ -105,7 +108,7 @@ async def stream_pyq_chat(
     def generate():
         try:
             stream = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-20b",
                 messages=messages,
                 temperature=0.3,
                 stream=True
@@ -116,8 +119,8 @@ async def stream_pyq_chat(
                     
             yield "data: [DONE]\n\n"
         except Exception as e:
-            print(f"Chat error: {e}")
-            yield f"data: {json.dumps({'text': f'Sorry, I encountered an error while processing your request (Invalid API Key). Error: {str(e)}'})}\n\n"
+            logger.error(f"Chat error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'text': 'Sorry, I encountered an error while processing your request. Please try again later.'})}\n\n"
             yield "data: [DONE]\n\n"
             
     return StreamingResponse(generate(), media_type="text/event-stream")

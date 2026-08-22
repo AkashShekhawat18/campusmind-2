@@ -56,7 +56,7 @@ def generate_question_replacement(original_question: Dict[str, Any]) -> Dict[str
     try:
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-20b",
             response_format={"type": "json_object"},
             temperature=0.7
         )

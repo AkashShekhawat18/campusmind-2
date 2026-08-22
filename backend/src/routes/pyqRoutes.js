@@ -8,6 +8,9 @@ const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// Public endpoints
+router.get('/preview/:id', pyqController.previewPYQ);
+
 // All routes are protected by default authentication
 router.use(protect);
 
@@ -19,6 +22,7 @@ router.delete('/library/:id', pyqController.deletePYQ);
 
 // Current Paper Analyzer endpoints (Should be restricted to teachers, but using basic protect for now)
 router.post('/analyze', upload.single('file'), pyqController.analyzeCurrentPaper);
+router.post('/analyze/stream', upload.single('file'), pyqController.analyzeCurrentPaperSSE);
 router.post('/replace', pyqController.replaceQuestion);
 router.post('/generate-pdf', pyqController.generatePDF);
 router.get('/analysis/history', pyqController.getAnalysisHistory);

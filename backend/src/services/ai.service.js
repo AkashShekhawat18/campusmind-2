@@ -43,7 +43,7 @@ IMPORTANT: When outputting mathematical equations, formulas, or expressions, YOU
       const groq = new Groq({ apiKey: keys[currentKeyIndex] });
       const completion = await groq.chat.completions.create({
         messages: messages,
-        model: "llama-3.3-70b-versatile", // We use the massive 70B parameter model
+        model: "openai/gpt-oss-20b", // We use the massive 70B parameter model
         temperature: 0.7,
         max_tokens: 1024,
       });
@@ -79,7 +79,7 @@ const callGroq = async (messages, temperature = 0.7, maxTokens = 1024) => {
       const groq = new Groq({ apiKey: keys[currentKeyIndex] });
       const completion = await groq.chat.completions.create({
         messages,
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-20b",
         temperature,
         max_tokens: maxTokens,
       });

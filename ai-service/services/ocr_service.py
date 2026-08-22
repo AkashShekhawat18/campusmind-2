@@ -51,14 +51,10 @@ def extract_text_with_vision_api(image_bytes: bytes, mime_type: str = "image/jpe
         try:
             import google.generativeai as genai
             genai.configure(api_key=gemini_key)
-
             candidate_models = [
-                'models/gemma-4-26b-a4b-it',
-                'models/gemini-1.5-flash-8b',
+                'models/gemini-2.5-flash',
                 'models/gemini-2.0-flash',
-                'models/gemini-1.5-flash',
-                'models/gemini-1.5-pro',
-                'models/gemini-2.5-flash'
+                'models/gemini-2.0-flash-lite'
             ]
 
             img = Image.open(io.BytesIO(image_bytes))
@@ -86,7 +82,7 @@ def extract_text_with_vision_api(image_bytes: bytes, mime_type: str = "image/jpe
             client = Groq(api_key=random.choice(key_list))
             base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
-            for groq_model in ["llama-3.2-11b-vision-instruct", "llama-3.2-90b-vision-instruct"]:
+            for groq_model in ["qwen/qwen3.6-27b", "qwen/qwen3.6-27b"]:
                 try:
                     res = client.chat.completions.create(
                         messages=[

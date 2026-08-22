@@ -38,7 +38,7 @@ export function Navbar() {
             <div className="w-4 h-4 bg-foreground/5 rounded-sm group-hover:scale-50 transition-transform duration-300" />
           </div>
           <span className="text-xl font-bold tracking-tight text-foreground">
-            Campus<span className="text-gradient">Mind</span>
+            MAL<span className="text-gradient">PHOR</span>
           </span>
         </Link>
 

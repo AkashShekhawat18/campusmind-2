@@ -12,7 +12,7 @@ export interface OriginalQuestion {
 export interface SimilarityResult {
   originalQuestion?: OriginalQuestion;
   sourceQuestionId?: string;
-  matchType: 'EXACT' | 'CONCEPT_REPEATED' | 'NEW';
+  matchType: 'EXACT' | 'CONCEPT_REPEATED' | 'MODIFIED' | 'NEW';
   overallSimilarity: number;
   targetQuestionId?: string;
   matchedQuestionText?: string;
@@ -40,6 +40,7 @@ export interface AnalysisReport {
     fullyRepeated?: number;
     conceptRepeated?: number;
     newQuestions?: number;
+    totalQuestions?: number;
   };
   similarityResults?: SimilarityResult[];
 }

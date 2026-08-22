@@ -15,7 +15,7 @@ const {
   deleteChat
 } = require('../controllers/teacherController');
 
-const { getEvents } = require('../controllers/calendarController');
+const { getEvents, createEvent, deleteEvent } = require('../controllers/calendarController');
 
 const router = express.Router();
 
@@ -40,7 +40,9 @@ router.get('/chat/history', getTeacherChats);
 router.put('/chat/:id', validateUUID(), renameChat);
 router.delete('/chat/:id', deleteChat);
 
-module.exports = router;
-
 // Calendar Route
 router.get('/calendar/schedule', getEvents);
+router.post('/calendar/schedule', createEvent);
+router.delete('/calendar/schedule/:id', validateUUID(), deleteEvent);
+
+module.exports = router;

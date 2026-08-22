@@ -39,7 +39,7 @@ const uploadToCloudinary = (buffer, originalname) => {
     const ext = originalname ? require('path').extname(originalname) : '.pdf';
     const public_id = `file_${Date.now()}${ext}`;
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: 'campusmind/teacher_resources', resource_type: 'raw', public_id },
+      { folder: 'malphor/teacher_resources', resource_type: 'raw', public_id },
       (error, result) => {
         if (result) resolve(result);
         else reject(error);
@@ -155,12 +155,12 @@ const deleteResource = async (req, res, next) => {
     }
 
     // Attempting to extract public_id from secure_url to delete from Cloudinary
-    // Example: https://res.cloudinary.com/demo/image/upload/v1234/campusmind/teacher_resources/abc.pdf
+    // Example: https://res.cloudinary.com/demo/image/upload/v1234/malphor/teacher_resources/abc.pdf
     try {
       const urlParts = resource.filePath.split('/');
       const filenameWithExt = urlParts[urlParts.length - 1];
       const filename = filenameWithExt.split('.')[0];
-      const folder = 'campusmind/teacher_resources'; 
+      const folder = 'malphor/teacher_resources'; 
       await cloudinary.uploader.destroy(`${folder}/${filename}`, { resource_type: 'raw' }); // mostly raw for pdfs/docs
     } catch (err) {
       console.warn("Could not delete from Cloudinary, continuing DB deletion", err);
@@ -302,7 +302,7 @@ const deleteChat = async (req, res, next) => {
 
     // Purge vector store embeddings for this chat_id in Python AI microservice
     try {
-      await axios.post('http://127.0.0.1:8000/api/ai/chat/delete', 
+      await axios.post('http://127.0.0.1:8001/api/ai/chat/delete', 
         new URLSearchParams({ user_id: req.user.id, chat_id: chatId }).toString(),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );

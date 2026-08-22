@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding student user...');
   
-  const email = 'student@campusmind.ai';
+  const email = 'student@malphor.ai';
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {

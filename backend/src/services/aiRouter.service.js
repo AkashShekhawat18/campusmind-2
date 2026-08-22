@@ -4,7 +4,10 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 
-// Fetch the best API key for a provider (Round Robin based on lastUsed)
+// In-memory model config cache (TTL: 60 seconds) to avoid DB hit on every message
+const modelConfigCache = new Map();
+const MODEL_CACHE_TTL_MS = 60_000;
+
 const getProviderKey = async (providerId, previousFailedKeyId = null) => {
   const whereClause = { providerId, active: true, status: 'Active' };
   if (previousFailedKeyId) {
@@ -12,7 +15,7 @@ const getProviderKey = async (providerId, previousFailedKeyId = null) => {
   }
 
   const keys = await prisma.providerAPIKey.findMany({
-    where: whereClause,
+    where: { ...whereClause, status: { notIn: ['RateLimited', 'Invalid'] } },
     orderBy: { lastUsed: 'asc' }
   });
   
@@ -52,7 +55,7 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
   }
 
   const providerName = modelConfig?.provider?.providerSlug || 'groq';
-  const modelName = modelConfig?.modelName || 'llama-3.3-70b-versatile';
+  const modelName = modelConfig?.modelName || 'openai/gpt-oss-20b';
   const startTime = Date.now();
   let tokens = 0;
   
@@ -265,7 +268,7 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://campusmind.ai',
+          'HTTP-Referer': 'https://malphor.ai',
         },
         data: {
           model: modelName,
@@ -308,15 +311,17 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
   } catch (err) {
     console.error(`AI Router Stream Error (Attempt ${attempt}):`, err.message || err);
     
-    // Mark key as RateLimited/Invalid if keyObject exists
+    // Mark key correctly: 401 = Invalid key, 429 = actually rate limited
     if (keyObject) {
+      const statusCode = err?.status || err?.response?.status || 0;
+      const newStatus = statusCode === 401 ? 'Invalid' : 'RateLimited';
       await prisma.providerAPIKey.update({
         where: { id: keyObject.id },
-        data: { status: 'RateLimited' }
+        data: { status: newStatus }
       }).catch(() => {});
     }
 
-    // Automatically fall back to Groq CampusMind Turbo model if non-Groq fails
+    // Automatically fall back to Groq MALPHOR Turbo model if non-Groq fails
     let fallbackModelConfig = modelConfig;
     if (providerName !== 'groq') {
       console.log(`[AI Router Fallback] Provider ${providerName} failed. Switching to Groq...`);
@@ -334,14 +339,21 @@ const streamResponse = async (req, res, modelConfig, messages, attempt = 1, prev
 };
 
 const getModelConfig = async (modelId, prompt = "") => {
+  const cacheKey = modelId || 'auto';
+  const cached = modelConfigCache.get(cacheKey);
+  if (cached && (Date.now() - cached.ts) < MODEL_CACHE_TTL_MS) {
+    return cached.model;
+  }
+
+  let model = null;
+
   if (!modelId || modelId === 'auto') {
-    // Intelligent Routing logic - Default to high-speed Groq LPU models (<500ms latency)
-    let model = await prisma.aIModel.findFirst({
+    // Default to highest-priority enabled Groq model (fastest LPU inference)
+    model = await prisma.aIModel.findFirst({
       where: { enabled: true, provider: { providerSlug: 'groq' } },
       orderBy: { priority: 'desc' },
       include: { provider: true }
     });
-
     if (!model) {
       model = await prisma.aIModel.findFirst({
         where: { enabled: true },
@@ -349,23 +361,21 @@ const getModelConfig = async (modelId, prompt = "") => {
         include: { provider: true }
       });
     }
-    
-    return model;
-  }
-
-  const model = await prisma.aIModel.findUnique({ 
-    where: { id: modelId },
-    include: { provider: true } 
-  });
-
-  if (!model || !model.enabled) {
-    return await prisma.aIModel.findFirst({
-      where: { enabled: true },
-      orderBy: { priority: 'desc' },
-      include: { provider: true }
+  } else {
+    model = await prisma.aIModel.findUnique({ 
+      where: { id: modelId },
+      include: { provider: true } 
     });
+    if (!model || !model.enabled) {
+      model = await prisma.aIModel.findFirst({
+        where: { enabled: true },
+        orderBy: { priority: 'desc' },
+        include: { provider: true }
+      });
+    }
   }
-  
+
+  if (model) modelConfigCache.set(cacheKey, { model, ts: Date.now() });
   return model;
 };
 

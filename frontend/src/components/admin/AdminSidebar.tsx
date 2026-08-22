@@ -8,6 +8,7 @@ import {
   MessageSquare, FileText, Bell, Settings, LogOut, ChevronLeft, ChevronRight,
   Building2, GraduationCap, CalendarDays
 } from 'lucide-react';
+import { SidebarItem, SidebarLogout } from '@/components/layout/SidebarComponents';
 
 const navItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -42,38 +43,31 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-          const Icon = item.icon;
-          
-          return (
-            <Link key={item.name} href={item.href}>
-              <div className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-all ${isActive ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-                <Icon size={22} className="min-w-[22px]" />
-                {!collapsed && (
-                  <span className="ml-3 text-sm font-medium whitespace-nowrap overflow-hidden">
-                    {item.name}
-                  </span>
-                )}
-              </div>
-            </Link>
-          );
-        })}
+        {navItems.map((item) => (
+          <SidebarItem
+            key={item.href}
+            label={item.name}
+            href={item.href}
+            icon={item.icon}
+            isActive={pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/admin/dashboard')}
+            isDark={true}
+            role="admin"
+            collapsed={collapsed}
+          />
+        ))}
       </nav>
 
       <div className="p-4 border-t border-white/10">
-        <div 
-          onClick={() => {
+        <SidebarLogout
+          isDark={true}
+          collapsed={collapsed}
+          onLogout={() => {
             localStorage.removeItem('adminToken');
             localStorage.removeItem('adminName');
             localStorage.removeItem('adminEmail');
             window.location.href = '/admin/login';
           }}
-          className="flex items-center px-3 py-3 rounded-lg cursor-pointer text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all"
-        >
-          <LogOut size={22} className="min-w-[22px]" />
-          {!collapsed && <span className="ml-3 text-sm font-medium">Sign Out</span>}
-        </div>
+        />
       </div>
     </motion.aside>
   );

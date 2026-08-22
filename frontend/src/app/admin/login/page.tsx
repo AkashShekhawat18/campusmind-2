@@ -56,7 +56,7 @@ export default function AdminLogin() {
         
         <div className="text-center mt-6 mb-8">
           <h1 className="text-2xl font-bold text-white mb-2">Admin Portal</h1>
-          <p className="text-gray-400 text-sm">Secure access to CampusMind systems</p>
+          <p className="text-gray-400 text-sm">Secure access to MALPHOR systems</p>
         </div>
 
         {error && (
@@ -75,7 +75,7 @@ export default function AdminLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                placeholder="admin@campusmind.com"
+                placeholder="admin@malphor.com"
                 required
               />
             </div>

@@ -20,6 +20,7 @@ export default function TeacherCampusGPT() {
 
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const currentChatIdRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -35,6 +36,9 @@ export default function TeacherCampusGPT() {
   
   const token = typeof window !== 'undefined' ? localStorage.getItem('teacherToken') : null;
   const userId = (typeof window !== 'undefined' && localStorage.getItem('teacherId')) || 'demo-user';
+
+  // Keep ref in sync with state so it's always immediately readable
+  useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
 
   useEffect(() => {
     setMounted(true);
@@ -77,9 +81,11 @@ export default function TeacherCampusGPT() {
   };
 
   const uploadFile = async (file: File, id: string) => {
-    let chatId = currentChatId;
+    let chatId = currentChatIdRef.current;
     if (!chatId) {
       chatId = `chat_${Date.now()}`;
+      // Update both ref and state so executeSend sees the new chatId immediately
+      currentChatIdRef.current = chatId;
       setCurrentChatId(chatId);
     }
 
@@ -245,13 +251,16 @@ export default function TeacherCampusGPT() {
         ? `${userMsg.content} (Attached document: ${readyFiles.map(f => f.name).join(', ')})` 
         : userMsg.content;
 
+      // Use ref so we always get the latest chatId even if state hasn't re-rendered yet
+      const activeChatId = currentChatIdRef.current;
+      
       const formData = new URLSearchParams();
       formData.append('message', messagePayload);
       formData.append('user_id', userId);
       formData.append('model_id', selectedModelId);
-      if (currentChatId) formData.append('chat_id', currentChatId);
+      if (activeChatId) formData.append('chat_id', activeChatId);
       
-      const historyForPython = currentChatId ? updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content })) : [];
+      const historyForPython = activeChatId ? updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content })) : [];
       formData.append('history', JSON.stringify(historyForPython));
 
       const controller = new AbortController();
@@ -308,14 +317,15 @@ export default function TeacherCampusGPT() {
         setMessages(prev => prev.map(m => m.id === asstMsgId ? { ...m, content: streamedResponse } : m));
       }
 
-      let activeChatId = currentChatId;
-      if (!currentChatId) {
+      let finalChatId = activeChatId;
+      if (!activeChatId) {
         const newChatId = 'chat_' + Date.now();
+        currentChatIdRef.current = newChatId;
         setCurrentChatId(newChatId);
-        activeChatId = newChatId;
+        finalChatId = newChatId;
         setChats(prev => [{ id: newChatId, title: userMsg.content.slice(0, 30), messages: [...updatedMessages, { id: asstMsgId, role: 'assistant', content: streamedResponse }] }, ...prev]);
       } else {
-        setChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: [...updatedMessages, { id: asstMsgId, role: 'assistant', content: streamedResponse }] } : c));
+        setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...updatedMessages, { id: asstMsgId, role: 'assistant', content: streamedResponse }] } : c));
       }
 
       try {
@@ -326,7 +336,7 @@ export default function TeacherCampusGPT() {
             'Authorization': `Bearer ${token}` 
           },
           body: JSON.stringify({
-            chatId: activeChatId,
+            chatId: finalChatId,
             title: userMsg.content.slice(0, 30),
             messages: [userMsg, { id: asstMsgId, role: 'assistant', content: streamedResponse }]
           })
@@ -334,9 +344,10 @@ export default function TeacherCampusGPT() {
         
         if (saveRes.ok) {
           const saveData = await saveRes.json();
-          if (activeChatId && activeChatId.startsWith('chat_')) {
+          if (finalChatId && finalChatId.startsWith('chat_')) {
+            currentChatIdRef.current = saveData.chatId;
             setCurrentChatId(saveData.chatId);
-            setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, id: saveData.chatId } : c));
+            setChats(prev => prev.map(c => c.id === finalChatId ? { ...c, id: saveData.chatId } : c));
           }
         }
       } catch (saveErr) {}

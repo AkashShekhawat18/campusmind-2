@@ -29,7 +29,7 @@ export default function ResourcesPage() {
   const [mounted, setMounted] = useState(false);
   const isDark = mounted ? resolvedTheme === 'dark' : true;
   
-  const [activeTab, setActiveTab] = useState<'bits' | 'campusmind'>('bits');
+  const [activeTab, setActiveTab] = useState<'bits' | 'malphor'>('bits');
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(false);
   
@@ -48,7 +48,7 @@ export default function ResourcesPage() {
 
   useEffect(() => {
     setMounted(true);
-    if (activeTab === 'campusmind') fetchResources();
+    if (activeTab === 'malphor') fetchResources();
   }, [activeTab]);
 
   const fetchResources = async () => {
@@ -138,14 +138,14 @@ export default function ResourcesPage() {
             BITS Pilani Library
           </button>
           <button
-            onClick={() => setActiveTab('campusmind')}
+            onClick={() => setActiveTab('malphor')}
             className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === 'campusmind'
+              activeTab === 'malphor'
                 ? (isDark ? 'bg-white/10 text-white shadow-sm' : 'bg-white text-black shadow-sm')
                 : (isDark ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black')
             }`}
           >
-            CampusMind Resources
+            MALPHOR Resources
           </button>
         </div>
       </motion.div>
@@ -172,8 +172,8 @@ export default function ResourcesPage() {
         </motion.div>
       )}
 
-      {/* CampusMind Resources Tab */}
-      {activeTab === 'campusmind' && (
+      {/* MALPHOR Resources Tab */}
+      {activeTab === 'malphor' && (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Upload Sidebar */}
           <div className="lg:col-span-1 space-y-4">

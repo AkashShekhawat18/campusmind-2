@@ -75,10 +75,10 @@ function bellCurve(t: number): number {
 
 // ── Props ────────────────────────────────────────────────────
 interface Malphor3DProps {
-  cursorPos: { x: number; y: number; distance: number };
+  cursorPosRef: React.MutableRefObject<{ x: number; y: number; distance: number }>;
 }
 
-export function Malphor3D({ cursorPos }: Malphor3DProps) {
+export function Malphor3D({ cursorPosRef }: Malphor3DProps) {
   const { scene } = useGLTF('/models/malphor.glb');
 
   const modelRef = useRef<THREE.Group>(null);
@@ -244,9 +244,10 @@ export function Malphor3D({ cursorPos }: Malphor3DProps) {
       if (baseState === 'thinking') trackWeight = 0.2;
       else if (baseState === 'walking') trackWeight = 0.5;
 
-      if (cursorPos.distance < 400) {
-        targetRotX += cursorPos.y * 0.3 * trackWeight;
-        targetRotY += cursorPos.x * 0.5 * trackWeight;
+      const currentPos = cursorPosRef.current;
+      if (currentPos.distance < 400) {
+        targetRotX += currentPos.y * 0.3 * trackWeight;
+        targetRotY += currentPos.x * 0.5 * trackWeight;
       }
     }
 

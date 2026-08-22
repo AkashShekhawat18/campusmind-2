@@ -244,7 +244,7 @@ def calculate_similarity_report(source_q: Dict[str, Any], target_q: Dict[str, An
 def search_pyq_database(questions: List[Dict[str, Any]], historical_pool: List[Dict[str, Any]], threshold: float = 40.0) -> List[Dict[str, Any]]:
     """
     Compares a list of current questions against a historical pool of PYQs.
-    Returns the similarity reports for matches above the threshold.
+    Returns similarity reports for ALL questions — those below the threshold are marked as NEW.
     """
     reports = []
     
@@ -257,9 +257,33 @@ def search_pyq_database(questions: List[Dict[str, Any]], historical_pool: List[D
             if report["overallSimilarity"] > best_score:
                 best_score = report["overallSimilarity"]
                 best_match = report
-                
+        
         if best_match and best_score >= threshold:
+            # Has a meaningful historical match
             reports.append(best_match)
+        else:
+            # No historical match found — mark as genuinely NEW/unique
+            reports.append({
+                "sourceQuestionId": current_q.get("id"),
+                "targetQuestionId": None,
+                "conceptMatch": 0.0,
+                "logicMatch": 0.0,
+                "formulaMatch": 0.0,
+                "patternMatch": 0.0,
+                "valuesMatch": 0.0,
+                "languageSimilarity": 0.0,
+                "overallSimilarity": 0.0,
+                "matchType": "NEW",
+                "reasoning": "No similar question found in the historical PYQ library. This question appears to be fresh/unique.",
+                "matchedQuestionText": None,
+                "matchedQuestionImages": [],
+                "originalQuestion": {
+                    "questionText": current_q.get("questionText", ""),
+                    "marks": current_q.get("marks", 0),
+                    "metadata": current_q.get("metadata", {}),
+                    "images": current_q.get("images", [])
+                }
+            })
             
     return reports
 
@@ -276,8 +300,8 @@ def compute_overall_paper_analytics(questions: List[Dict[str, Any]], reports: Li
     modified_c = sum(1 for r in reports if r["matchType"] == "MODIFIED")
     
     # Questions that found a match above threshold
-    matched_count = len(reports)
-    new_c = total_q - matched_count
+    new_c = sum(1 for r in reports if r.get("matchType") == "NEW")
+    matched_count = total_q - new_c
         
     overall_rep = ((exact_c * 1.0) + (concept_c * 0.7) + (modified_c * 0.4)) / total_q * 100
     

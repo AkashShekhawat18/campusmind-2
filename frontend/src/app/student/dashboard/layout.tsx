@@ -10,7 +10,7 @@ import {
   Settings, LogOut, Menu, X, ChevronRight, Sun, Moon, Sparkles, UserCircle
 , CalendarDays, ClipboardList} from 'lucide-react';
 import { WeatherWidget } from '@/components/widgets/WeatherWidget';
-
+import { SidebarItem, SidebarUserCard, SidebarThemeToggle, SidebarLogout } from '@/components/layout/SidebarComponents';
 const sidebarItems = [
   { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
   { label: 'Campus GPT', href: '/student/dashboard/campus-gpt', icon: MessageSquare },
@@ -65,7 +65,7 @@ export default function StudentDashboardLayout({
             exit={{ x: -280 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
             className={`flex flex-col w-[260px] h-full flex-shrink-0 border-r z-50 ${
-              isDark ? 'bg-[#111113] border-white/5' : 'bg-[#e8e8ed] border-black/5'
+              isDark ? 'bg-[#111113]/95 backdrop-blur-xl border-white/5' : 'bg-[#e8e8ed]/95 backdrop-blur-xl border-black/5'
             }`}
           >
             {/* Logo */}
@@ -97,68 +97,27 @@ export default function StudentDashboardLayout({
 
             {/* Navigation */}
             <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-              {sidebarItems.map((item) => {
-                const isActive = pathname === item.href;
-                const Icon = item.icon;
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <motion.div
-                      whileHover={{ x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                        isActive
-                          ? (isDark ? 'bg-white/10 text-white shadow-lg shadow-white/5' : 'bg-black/10 text-black shadow-lg')
-                          : (isDark ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-black/60 hover:text-black hover:bg-black/5')
-                      }`}
-                    >
-                      <Icon size={18} className={isActive ? (isDark ? 'text-cyan-400' : 'text-cyan-600') : ''} />
-                      {item.label}
-                      {isActive && (
-                        <ChevronRight size={14} className="ml-auto opacity-40" />
-                      )}
-                    </motion.div>
-                  </Link>
-                );
-              })}
+              {sidebarItems.map((item) => (
+                <SidebarItem
+                  key={item.href}
+                  label={item.label}
+                  href={item.href}
+                  icon={item.icon}
+                  isActive={pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/student/dashboard')}
+                  isDark={isDark}
+                  role="student"
+                />
+              ))}
             </nav>
 
             {/* Bottom Actions */}
-            <div className={`p-3 border-t ${isDark ? 'border-white/5' : 'border-black/5'}`}>
-              {/* Theme Toggle */}
+            <div className={`p-3 space-y-1 border-t ${isDark ? 'border-white/5' : 'border-black/5'}`}>
               {mounted && (
-                <button
-                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                  className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                    isDark ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-black/60 hover:text-black hover:bg-black/5'
-                  }`}
-                >
-                  {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                  {isDark ? 'Light Mode' : 'Dark Mode'}
-                </button>
+                <SidebarThemeToggle isDark={isDark} onThemeToggle={() => setTheme(isDark ? 'light' : 'dark')} />
               )}
-
-              {/* Logout */}
-              <button
-                onClick={handleLogout}
-                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                  isDark ? 'text-red-400/70 hover:text-red-400 hover:bg-red-500/10' : 'text-red-500/70 hover:text-red-600 hover:bg-red-50'
-                }`}
-              >
-                <LogOut size={18} />
-                Logout
-              </button>
-
-              {/* User Info */}
-              <div className={`mt-3 px-3 py-2 rounded-xl flex items-center gap-3 ${
-                isDark ? 'bg-white/5' : 'bg-black/5'
-              }`}>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold shadow-md">
-                  {studentName ? studentName.charAt(0).toUpperCase() : 'S'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">{studentName || 'Student'}</div>
-                  <div className="text-[10px] opacity-50 truncate">Student</div>
-                </div>
+              <SidebarLogout isDark={isDark} onLogout={handleLogout} />
+              <div className="pt-2">
+                <SidebarUserCard name={studentName} roleText="Student" isDark={isDark} role="student" />
               </div>
             </div>
           </motion.aside>

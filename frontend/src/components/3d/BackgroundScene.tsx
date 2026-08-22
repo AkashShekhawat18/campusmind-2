@@ -2,9 +2,10 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Stars, Float, PointMaterial, Points } from '@react-three/drei';
+import { Float, PointMaterial, Points } from '@react-three/drei';
 import * as THREE from 'three';
 import { useTheme } from 'next-themes';
+import { CanvasErrorBoundary } from '@/components/ui/CanvasErrorBoundary';
 
 function KnowledgeSphere({ isLightMode }: { isLightMode: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -51,7 +52,7 @@ function KnowledgeSphere({ isLightMode }: { isLightMode: boolean }) {
     <group position={[0, 0, -4]}>
       <mesh ref={meshRef}>
         <icosahedronGeometry args={[2.5, 3]} />
-        <meshStandardMaterial 
+        <meshBasicMaterial 
           color={isLightMode ? "#0070F3" : "#3a3a3c"} 
           wireframe 
           transparent 
@@ -91,15 +92,16 @@ export function BackgroundScene() {
 
   return (
     <div className="fixed inset-0 z-[-1] pointer-events-none bg-background">
-      <Canvas camera={{ position: [0, 0, 6], fov: 60 }}>
-        <ambientLight intensity={isLightMode ? 0.8 : 0.2} />
-        <directionalLight position={[5, 5, 5]} intensity={isLightMode ? 1 : 0.5} color={isLightMode ? "#ffffff" : "#a1a1aa"} />
-        <CursorLight isLightMode={isLightMode} />
-        {!isLightMode && <Stars radius={100} depth={50} count={4000} factor={3} saturation={0} fade speed={0.5} />}
-        <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.5}>
-          <KnowledgeSphere isLightMode={isLightMode} />
-        </Float>
-      </Canvas>
+      <CanvasErrorBoundary>
+        <Canvas camera={{ position: [0, 0, 6], fov: 60 }}>
+          <ambientLight intensity={isLightMode ? 0.8 : 0.2} />
+          <directionalLight position={[5, 5, 5]} intensity={isLightMode ? 1 : 0.5} color={isLightMode ? "#ffffff" : "#a1a1aa"} />
+          <CursorLight isLightMode={isLightMode} />
+          <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.5}>
+            <KnowledgeSphere isLightMode={isLightMode} />
+          </Float>
+        </Canvas>
+      </CanvasErrorBoundary>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_var(--background)_80%)]" />
     </div>
   );

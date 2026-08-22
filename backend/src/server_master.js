@@ -15,27 +15,77 @@ const app = express();
 
 // Security Middleware
 app.use(helmet({
-  crossOriginResourcePolicy: false,
-  frameguard: false,
-  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  frameguard: false, // Disabled in favor of CSP frame-ancestors
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "default-src": ["'self'"],
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "accounts.google.com"],
+      "style-src": ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
+      "img-src": ["'self'", "data:", "blob:", "res.cloudinary.com", "lh3.googleusercontent.com"],
+      "media-src": ["'self'", "res.cloudinary.com"],
+      "font-src": ["'self'", "fonts.gstatic.com", "data:"],
+      "connect-src": [
+        "'self'", 
+        "http://127.0.0.1:8001", 
+        "http://localhost:8001", 
+        "https://api.openweathermap.org", 
+        "ws:", 
+        "wss:", 
+        "accounts.google.com",
+        process.env.FRONTEND_URL || 'http://localhost:3000'
+      ],
+      "frame-ancestors": ["'self'", process.env.FRONTEND_URL || 'http://localhost:3000'],
+      "frame-src": ["'self'", "accounts.google.com"],
+      "worker-src": ["'self'", "blob:"],
+      "child-src": ["'self'", "blob:"],
+      "upgrade-insecure-requests": process.env.NODE_ENV === "production" ? [] : null,
+    },
+  },
 }));
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
 }));
 
-// Rate Limiting
-const limiter = rateLimit({
+// Route-Specific Rate Limiting
+const createLimiter = (max, message) => rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  max,
+  message: { error: message }
 });
-app.use(limiter);
+
+// Authentication
+app.use('/api/auth', createLimiter(20, 'Too many login attempts, please try again later.'));
+
+// Weather
+app.use('/api/teacher/weather', createLimiter(50, 'Too many weather requests, please try again later.'));
+app.use('/api/student/weather', createLimiter(50, 'Too many weather requests, please try again later.'));
+
+// Streaming
+app.use('/api/ai/chat/stream', createLimiter(15, 'Streaming limit exceeded. Please try again later.'));
+app.use('/api/ai/pyq/chat/stream', createLimiter(15, 'Streaming limit exceeded. Please try again later.'));
+
+// CampusGPT & PYQ AI
+app.use('/api/ai/chat', createLimiter(30, 'CampusGPT limit exceeded. Please wait before sending more messages.'));
+app.use('/api/ai/pyq/chat', createLimiter(30, 'PYQ Chat limit exceeded. Please wait before sending more messages.'));
+
+// OCR
+app.use('/api/ai/pyq/extract', createLimiter(10, 'OCR extraction limit exceeded, please try again later.'));
+
+// Assessment AI
+app.use('/api/assessment', createLimiter(10, 'Assessment AI limit exceeded. Please try again later.'));
+
+// Large uploads
+app.use('/api/ai/upload', createLimiter(5, 'Upload limit exceeded to prevent abuse. Please try again later.'));
+app.use('/api/pyq/upload', createLimiter(5, 'Upload limit exceeded to prevent abuse. Please try again later.'));
+app.use('/api/pyq/analyze', createLimiter(5, 'Upload limit exceeded to prevent abuse. Please try again later.'));
 
 // Proxy for Python AI Microservice (must be before body parsers for streaming/multipart)
 const { createProxyMiddleware } = require('http-proxy-middleware');
 app.use('/api/ai', createProxyMiddleware({
-  target: 'http://127.0.0.1:8000',
+  target: 'http://127.0.0.1:8001',
   changeOrigin: true,
   pathRewrite: function (path, req) {
     return req.originalUrl;

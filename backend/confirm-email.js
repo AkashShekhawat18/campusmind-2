@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function run() {
-  const email = process.argv[2] || 'student@campusmind.ai';
+  const email = process.argv[2] || 'student@malphor.ai';
   try {
     console.log(`Confirming email for ${email}...`);
     

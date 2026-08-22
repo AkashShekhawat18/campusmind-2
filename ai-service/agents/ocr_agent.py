@@ -77,7 +77,7 @@ class OCRAgent:
                         ],
                     }
                 ],
-                model="llama-3.2-11b-vision-preview",
+                model="qwen/qwen3.6-27b",
                 temperature=0.1
             )
             return res.choices[0].message.content.strip()

@@ -9,7 +9,7 @@ import { GoogleLogin } from '@react-oauth/google';
 
 export default function StudentLogin() {
   const router = useRouter();
-  const [email, setEmail] = useState('student@campusmind.ai');
+  const [email, setEmail] = useState('student@malphor.ai');
   const [password, setPassword] = useState('student123');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +94,7 @@ export default function StudentLogin() {
   };
 
   const handleDemoLogin = async () => {
-    setEmail('student@campusmind.ai');
+    setEmail('student@malphor.ai');
     setPassword('student123');
     setError('');
     setIsLoading(true);
@@ -103,7 +103,7 @@ export default function StudentLogin() {
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'student@campusmind.ai', password: 'student123' })
+        body: JSON.stringify({ email: 'student@malphor.ai', password: 'student123' })
       });
 
       const data = await res.json();
@@ -228,7 +228,7 @@ export default function StudentLogin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors" 
-              placeholder="student@campusmind.edu or STU24..." 
+              placeholder="student@malphor.edu or STU24..." 
               required
             />
           </div>

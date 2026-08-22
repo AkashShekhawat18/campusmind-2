@@ -275,7 +275,7 @@ const deleteChat = async (req, res, next) => {
 
     // Purge vector store embeddings for this chat_id in Python AI microservice
     try {
-      await axios.post('http://127.0.0.1:8000/api/ai/chat/delete', 
+      await axios.post('http://127.0.0.1:8001/api/ai/chat/delete', 
         new URLSearchParams({ user_id: req.user.id, chat_id: chatId }).toString(),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );

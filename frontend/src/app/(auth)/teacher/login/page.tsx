@@ -157,7 +157,7 @@ export default function TeacherLogin() {
 
       {/* Demo credentials hint */}
       <div className="mb-6 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">
-        <strong>Demo Account:</strong> teacher@campusmind.ai / teacher123
+        <strong>Demo Account:</strong> teacher@malphor.ai / teacher123
       </div>
 
       {error && (
@@ -225,7 +225,7 @@ export default function TeacherLogin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="teacher@campusmind.ai or TCH24..."
+              placeholder="teacher@malphor.ai or TCH24..."
               required
             />
           </div>

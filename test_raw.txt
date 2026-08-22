@@ -1,0 +1,30 @@
+Quantum Computing (5334QUCO8Y), Final exam
+Ronald de Wolf
+Monday June 13, 2022
+10:00–13:00, REC A0.03
+The exam is “open book,” meaning you can use any kind of paper you want but no
+electronic devices beyond what is needed to download and read the exam questions,
+and (at the end) to scan and upload your solutions. Please answer in English. Use a
+black or blue pen, not a pencil. Write clearly and explicitly, and explain your answers.
+For a multipart-question, you may assume answers for earlier parts of the question to
+answer later parts, even if you don’t know the earlier answers. The total number of
+points adds up to 9; your exam grade will be your number of points +1. An exam
+grade of at least 5 is a necessary condition for passing the course. Your final grade
+will be 60% exam + 40% homework, rounded to the nearest integer.
+1. (1 point) Suppose you have a 2-qubit basis state |b, 0⟩, with unknown bit b ∈{0, 1}, and
+you’d like to copy the classical bit b into the second qubit (overwriting the |0⟩). How can you
+do this using only Hadamard gates and controlled-Z gates?
+2. (2.5 points) This exercise is about efficiently finding the gradient ∇f(z) of a function f :
+Rd →R at a point z ∈Rd. The gradient is the d-dimensional real vector of the d partial
+derivatives ∂f/∂xi, evaluated at the point z.
+(a) Let f(x) = a + bx be a linear function from R to R, where the real number b ∈[0, 1)
+can be written with n bits of precision.
+Suppose we have a unitary Of that maps
+|x, 0⟩→|x, f(x)⟩(assume we have enough qubits to write down x and f(x)). Give a
+quantum algorithm to compute b using one application of Of and one application of
+O−1
+f , and some unitaries that do not depend on f.
+Hint: Start with a uniform superposition over all x ∈{0, 1}n and end with an inverse QFT. You’re
+allowed to use a unitary like |c⟩7→e2πic|c⟩since it does not depend on f.
+(b) Let f(x1, . . . , xd) = a + b1x1 + · · · + bdxd be a linear function from Rd to R, where
+a, b1, . . . , bd ∈R. Show that the gradien

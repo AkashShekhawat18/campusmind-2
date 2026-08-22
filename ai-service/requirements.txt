@@ -16,3 +16,6 @@ requests
 sse-starlette
 python-multipart
 reportlab
+google-generativeai
+pdfplumber
+rapidfuzz

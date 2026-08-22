@@ -3,12 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import uvicorn
 import os
+import asyncio
 from dotenv import load_dotenv
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 from services.upload_service import process_upload
 from services.chat_service import handle_chat_stream
 from services.vector_service import delete_collection_for_user
-from services.document_intelligence import process_pyq_document
+from services.document_intelligence import process_pyq_document, process_pyq_document_stream
 from services.similarity_engine import search_pyq_database, compute_overall_paper_analytics
 from services.replacement_engine import generate_question_replacement, generate_updated_pdf
 from services.pyq_chat import stream_pyq_chat
@@ -19,12 +24,15 @@ from fastapi.responses import Response
 
 load_dotenv(override=True)
 
-app = FastAPI(title="CampusMind AI Microservice", version="1.0")
+app = FastAPI(title="MALPHOR AI Microservice", version="1.0")
 
 # CORS for direct frontend access if needed (Node proxy is preferred)
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,7 +40,7 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": "campusmind-ai"}
+    return {"status": "ok", "service": "malphor-ai"}
 
 @app.post("/api/ai/upload")
 async def upload_document(
@@ -51,8 +59,8 @@ async def upload_document(
             results.append(result)
         return {"status": "success", "results": results}
     except Exception as e:
-        print(f"Upload Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Upload Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 @app.post("/api/ai/chat/stream")
 async def chat_stream(
@@ -71,8 +79,8 @@ async def chat_stream(
         # Returns a StreamingResponse
         return await handle_chat_stream(message, user_id, chat_id, history_list)
     except Exception as e:
-        print(f"Chat Stream Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Chat Stream Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 @app.delete("/api/ai/memory/{user_id}")
 async def clear_memory(user_id: str):
@@ -85,17 +93,37 @@ async def clear_memory(user_id: str):
     raise HTTPException(status_code=500, detail="Failed to clear memory")
 
 @app.post("/api/ai/pyq/extract")
-async def extract_pyq(file: UploadFile = File(...)):
+async def extract_pyq(file: UploadFile = File(...), stream: bool = False):
     """
     Extracts structured questions from a PDF or Image using Groq Vision and OpenCV.
+    When stream=True, returns NDJSON progress events via StreamingResponse.
     """
     try:
         file_bytes = await file.read()
+
+        if stream:
+            # Return streaming NDJSON progress events
+            async def event_generator():
+                try:
+                    async for chunk in process_pyq_document_stream(file_bytes, file.filename, file.content_type):
+                        yield chunk
+                except Exception as stream_err:
+                    import json as _json
+                    logger.error(f"PYQ Stream Error: {stream_err}", exc_info=True)
+                    yield _json.dumps({"event": "error", "message": str(stream_err)}) + "\n"
+
+            from starlette.responses import StreamingResponse as StarletteStreamingResponse
+            return StarletteStreamingResponse(
+                event_generator(),
+                media_type="application/x-ndjson",
+                headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "no-cache"}
+            )
+
         questions = await process_pyq_document(file_bytes, file.filename, file.content_type)
         return {"status": "success", "questions": questions}
     except Exception as e:
-        print(f"PYQ Extraction Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"PYQ Extraction Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 @app.post("/api/ai/pyq/similarity")
 async def compute_similarity(
@@ -106,8 +134,8 @@ async def compute_similarity(
     Computes deep semantic similarity across 6 dimensions.
     """
     try:
-        reports = search_pyq_database(questions, historical_pool)
-        analytics = compute_overall_paper_analytics(questions, reports)
+        reports = await asyncio.to_thread(search_pyq_database, questions, historical_pool)
+        analytics = await asyncio.to_thread(compute_overall_paper_analytics, questions, reports)
         
         return {
             "status": "success",
@@ -115,8 +143,8 @@ async def compute_similarity(
             "analytics": analytics
         }
     except Exception as e:
-        print(f"Similarity Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Similarity Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 @app.post("/api/ai/pyq/replace")
 async def replace_question(
@@ -129,7 +157,8 @@ async def replace_question(
         replacement = generate_question_replacement(original_question)
         return {"status": "success", "replacement": replacement}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"PYQ Replace Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 @app.post("/api/ai/pyq/generate-pdf")
 async def generate_pdf(
@@ -143,7 +172,8 @@ async def generate_pdf(
         pdf_bytes = generate_updated_pdf(questions, title)
         return Response(content=pdf_bytes, media_type="application/pdf")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"PDF Generation Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 @app.post("/api/ai/pyq/index")
 async def index_pyq(
@@ -172,8 +202,8 @@ async def index_pyq(
         else:
             raise HTTPException(status_code=500, detail="Failed to store vectors")
     except Exception as e:
-        print(f"Index PYQ Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Index PYQ Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 @app.post("/api/ai/context")
 async def get_context(
     message: str = Form(...),
@@ -188,8 +218,8 @@ async def get_context(
         context = retrieve_context(message, user_id, chat_id=chat_id, top_k=5)
         return {"status": "success", "context": context}
     except Exception as e:
-        print(f"Context Retrieval Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Context Retrieval Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 @app.post("/api/ai/chat/delete")
 async def delete_chat_memory(
@@ -204,8 +234,8 @@ async def delete_chat_memory(
         success = delete_chunks_for_chat(user_id, chat_id)
         return {"status": "success", "message": f"Memory purged for chat '{chat_id}'"}
     except Exception as e:
-        print(f"Delete Chat Memory Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Delete Chat Memory Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 from pydantic import BaseModel
 class PYQChatRequest(BaseModel):
@@ -224,7 +254,10 @@ async def pyq_chat_stream(request: PYQChatRequest):
             request.history
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"PYQ Chat Stream Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again.")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    env = os.getenv("ENVIRONMENT") or os.getenv("NODE_ENV", "development")
+    is_development = env.lower() == "development"
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=is_development)

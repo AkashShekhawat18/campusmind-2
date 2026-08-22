@@ -49,13 +49,12 @@ class QuestionExtractionAgent:
         )
 
         try:
-            # We process text in chunks if it's too large, but for standard papers up to 8k tokens we can do it in one pass
             res = self.groq_client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Extract questions from this text:\n\n{raw_text[:20000]}"}
                 ],
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 temperature=0.1,
                 max_tokens=8000,
                 response_format={"type": "json_object"}

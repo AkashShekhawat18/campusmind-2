@@ -79,7 +79,7 @@ export const WeatherWidget = () => {
 
       const cached = getCachedWeather();
       // If cached data exists but city is incorrectly labeled, bypass cache to re-detect
-      if (cached && cached.city !== 'Neem ka Thana') {
+      if (cached && cached.city !== 'Neem ka Thana' && cached.city !== 'Surajgarh') {
         setData(cached);
         setLoading(false);
         return;
@@ -92,11 +92,11 @@ export const WeatherWidget = () => {
             let city = 'Pilani';
             try {
               const reverseCity = await reverseGeocode(position.coords.latitude, position.coords.longitude);
-              if (reverseCity) {
+              if (reverseCity && reverseCity !== 'Neem ka Thana' && reverseCity !== 'Surajgarh') {
                 city = reverseCity;
               } else {
                 const ipInfo = await fetchIpLocation();
-                if (ipInfo && ipInfo.city && ipInfo.city !== 'Neem ka Thana') city = ipInfo.city;
+                if (ipInfo && ipInfo.city && ipInfo.city !== 'Neem ka Thana' && ipInfo.city !== 'Surajgarh') city = ipInfo.city;
               }
             } catch (e) {}
             await fetchAndSetWeather(position.coords.latitude, position.coords.longitude, city);
@@ -119,7 +119,8 @@ export const WeatherWidget = () => {
     const ipInfo = await fetchIpLocation();
     if (ipInfo && ipInfo.latitude && ipInfo.longitude) {
       const reverseCity = await reverseGeocode(ipInfo.latitude, ipInfo.longitude);
-      const city = reverseCity || (ipInfo.city && ipInfo.city !== 'Neem ka Thana' ? ipInfo.city : 'Pilani');
+      const isValidCity = (c?: string | null) => c && c !== 'Neem ka Thana' && c !== 'Surajgarh';
+      const city = isValidCity(reverseCity) ? reverseCity as string : (isValidCity(ipInfo.city) ? ipInfo.city as string : 'Pilani');
       await fetchAndSetWeather(ipInfo.latitude, ipInfo.longitude, city);
     } else {
       // Ultimate fallback: Pilani (28.36, 75.58)
@@ -375,7 +376,7 @@ export const WeatherWidget = () => {
                   <div className="pt-2 border-t border-foreground/5 text-center">
                     <button
                       onClick={() => {
-                        localStorage.removeItem('campusmind_weather_cache');
+                        localStorage.removeItem('malphor_weather_cache');
                         loadWeather();
                       }}
                       className="text-[11px] text-primary/80 hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto py-1"

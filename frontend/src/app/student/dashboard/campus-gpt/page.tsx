@@ -700,7 +700,7 @@ export default function StudentCampusGPT() {
               <div className="flex justify-between items-center px-1">
                 <ModelSelector selectedModelId={selectedModelId} onModelSelect={handleModelSelect} />
                 <div className="text-[10px] opacity-40 font-medium tracking-wide uppercase">
-                  Powered by CampusMind AI Router
+                  Powered by MALPHOR AI Router
                 </div>
               </div>
               

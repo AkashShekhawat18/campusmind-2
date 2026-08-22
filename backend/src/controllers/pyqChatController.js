@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const axios = require('axios');
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001';
 
 exports.getChatHistory = async (req, res) => {
   try {
@@ -111,7 +111,7 @@ exports.globalChat = async (req, res) => {
       res.status(500).json({ error: 'Failed to process chat: AI Service returned ' + error.response.status });
     } else if (error.code === 'ECONNREFUSED') {
       console.error('Global Chat Error: AI Service is not running on', AI_SERVICE_URL);
-      res.status(503).json({ error: 'AI Service is not available. Please ensure the AI service is running on port 8000.' });
+      res.status(503).json({ error: 'AI Service is not available. Please ensure the AI service is running on port 8001.' });
     } else {
       console.error('Global Chat Error:', error);
       res.status(500).json({ error: 'Failed to process chat: ' + error.message });
@@ -223,7 +223,7 @@ exports.paperChat = async (req, res) => {
        res.status(500).json({ error: 'Failed to process chat: AI Service returned ' + error.response.status });
     } else if (error.code === 'ECONNREFUSED') {
        console.error('Paper Chat Error: AI Service is not running on', AI_SERVICE_URL);
-       res.status(503).json({ error: 'AI Service is not available. Please ensure the AI service is running on port 8000.' });
+       res.status(503).json({ error: 'AI Service is not available. Please ensure the AI service is running on port 8001.' });
     } else {
        console.error('Paper Chat Error:', error);
        res.status(500).json({ error: 'Failed to process chat: ' + error.message });

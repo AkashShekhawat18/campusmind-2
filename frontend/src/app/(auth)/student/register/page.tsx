@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { GraduationCap } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { COLLEGES, getDepartmentsForCollege } from '@/lib/academicData';
 
 export default function StudentRegister() {
   const [submitted, setSubmitted] = useState(false);
@@ -87,29 +89,28 @@ export default function StudentRegister() {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Email</label>
-          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors" placeholder="john@campusmind.edu" />
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors" placeholder="john@malphor.edu" />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Phone Number</label>
           <input type="tel" required className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors" placeholder="+1 (555) 000-0000" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground/70 mb-1">College</label>
-          <select value={college} onChange={e => setCollege(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors appearance-none">
-            <option value="BITS Pilani">BITS Pilani</option>
-            <option value="IIT Bombay">IIT Bombay</option>
-            <option value="NIT Trichy">NIT Trichy</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground/70 mb-1">Branch</label>
-          <select value={branch} onChange={e => setBranch(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors appearance-none">
-            <option value="Information Technology">Information Technology (IT)</option>
-            <option value="Computer Science">Computer Science (CS)</option>
-            <option value="Electrical Engineering">Electrical Engineering (EE)</option>
-            <option value="Mechanical Engineering">Mechanical Engineering (ME)</option>
-          </select>
-        </div>
+        <SearchableSelect
+          label="College"
+          options={COLLEGES}
+          value={college}
+          onChange={setCollege}
+          placeholder="Select your college"
+          themeColor="neon-cyan"
+        />
+        <SearchableSelect
+          label="Branch"
+          options={getDepartmentsForCollege(college)}
+          value={branch}
+          onChange={setBranch}
+          placeholder="Select your branch"
+          themeColor="neon-cyan"
+        />
         <div>
           <label className="block text-sm font-medium text-foreground/70 mb-1">Password</label>
           <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-neon-cyan transition-colors" placeholder="••••••••" />

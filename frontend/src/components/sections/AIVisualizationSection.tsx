@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { motion } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { MeshDistortMaterial, Float } from '@react-three/drei';
+import { CanvasErrorBoundary } from '@/components/ui/CanvasErrorBoundary';
 
 function AIBlob() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -36,10 +37,12 @@ export function AIVisualizationSection() {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 py-24 z-20 overflow-hidden">
       <div className="absolute inset-0 opacity-50">
-        <Canvas camera={{ position: [0, 0, 5] }}>
-          <ambientLight intensity={0.5} />
-          <AIBlob />
-        </Canvas>
+        <CanvasErrorBoundary>
+          <Canvas camera={{ position: [0, 0, 5] }}>
+            <ambientLight intensity={0.5} />
+            <AIBlob />
+          </Canvas>
+        </CanvasErrorBoundary>
       </div>
       
       <div className="relative z-10 text-center pointer-events-none">

@@ -13,6 +13,7 @@ import { useTheme } from 'next-themes';
 import { MalphorChat } from './MalphorChat';
 import { Malphor3D } from './Malphor3D';
 import { MalphorBubble } from './MalphorBubble';
+import { CanvasErrorBoundary } from '@/components/ui/CanvasErrorBoundary';
 
 export function Malphor() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -39,7 +40,7 @@ export function Malphor() {
   const {
     bubbleText,
     bubbleVisible,
-    cursorPos,
+    cursorPosRef,
     showBubble,
     handleMascotClick,
   } = useMalphorBehavior(containerRef, currentWaypoint.name, moveToWaypoint);
@@ -119,18 +120,20 @@ export function Malphor() {
           </div>
 
           <div className="w-full h-full pointer-events-none">
-            <Canvas
-              camera={{ position: [0, 0, 7], fov: 40 }}
-              style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
-              gl={{ alpha: true, antialias: true }}
-            >
-              <ambientLight intensity={1.2} />
-              <directionalLight position={[5, 5, 5]} intensity={2.5} color="#ffffff" castShadow />
-              <pointLight position={[-5, -5, -5]} intensity={1.5} color="#00e5ff" />
-              <Environment preset="city" />
+            <CanvasErrorBoundary>
+              <Canvas
+                camera={{ position: [0, 0, 7], fov: 40 }}
+                style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
+                gl={{ alpha: true, antialias: true }}
+              >
+                <ambientLight intensity={1.2} />
+                <directionalLight position={[5, 5, 5]} intensity={2.5} color="#ffffff" castShadow />
+                <pointLight position={[-5, -5, -5]} intensity={1.5} color="#00e5ff" />
+                <Environment preset="city" />
 
-              <Malphor3D cursorPos={cursorPos} />
-            </Canvas>
+                <Malphor3D cursorPosRef={cursorPosRef} />
+              </Canvas>
+            </CanvasErrorBoundary>
           </div>
         </motion.div>
       )}

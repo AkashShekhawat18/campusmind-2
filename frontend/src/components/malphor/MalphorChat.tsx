@@ -35,7 +35,7 @@ export function MalphorChat({ isOpen, onClose, onBotSpeak }: MalphorChatProps) {
     {
       id: '1',
       role: 'assistant',
-      text: "👋 Hi! I am **Malphor**, your Hybrid Intelligent Assistant. I can instantly guide you through **CampusMind website navigation** or assist with **academic questions, homework, coding, LaTeX math, PDF summaries, and image OCR**!",
+      text: "👋 Hi! I am **Malphor**, your Hybrid Intelligent Assistant. I can instantly guide you through **MALPHOR website navigation** or assist with **academic questions, homework, coding, LaTeX math, PDF summaries, and image OCR**!",
       mode: 'WEBSITE_INSTANT'
     },
   ]);

@@ -33,6 +33,9 @@ export function QuestionCard({ result, index, isDark, onReplace, replacement }: 
       if (result.overallSimilarity >= 95) return { bg: 'bg-orange-500', text: 'text-orange-500', lightBg: 'bg-orange-500/10', border: 'border-orange-500/30', icon: AlertTriangle, label: 'Nearly Identical' };
       return { bg: 'bg-amber-500', text: 'text-amber-500', lightBg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: Brain, label: 'Concept Match' };
     }
+    if (result.matchType === 'MODIFIED') {
+      return { bg: 'bg-blue-500', text: 'text-blue-500', lightBg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: Brain, label: 'Modified Match' };
+    }
     return { bg: 'bg-emerald-500', text: 'text-emerald-500', lightBg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: CheckCircle2, label: 'Unique' };
   };
 

@@ -13,9 +13,10 @@ import { Message } from './types';
 import { ArtifactModal } from './ArtifactModal';
 
 // Memoized Markdown Component for extreme performance
+type MarkdownProps = React.ComponentProps<typeof ReactMarkdown> & { className?: string };
 const MemoizedMarkdown = memo(
-  ReactMarkdown,
-  (prevProps, nextProps) =>
+  ReactMarkdown as React.FC<MarkdownProps>,
+  (prevProps: MarkdownProps, nextProps: MarkdownProps) =>
     prevProps.children === nextProps.children && prevProps.className === nextProps.className
 );
 
@@ -100,11 +101,18 @@ export const MessageBubble = memo(function MessageBubble({ msg, isDark, onEdit }
             </div>
             
             <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:p-0 prose-pre:bg-transparent chat-message-content">
-              <MemoizedMarkdown
-                remarkPlugins={[remarkMath, remarkGfm]}
-                rehypePlugins={[rehypeKatex]}
+              {content === '' ? (
+                <div className="flex items-center gap-1.5 h-6 px-1 py-1">
+                  <div className={`w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.3s] ${isDark ? 'bg-white/50' : 'bg-black/50'}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.15s] ${isDark ? 'bg-white/50' : 'bg-black/50'}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full animate-bounce ${isDark ? 'bg-white/50' : 'bg-black/50'}`} />
+                </div>
+              ) : (
+                <MemoizedMarkdown
+                  remarkPlugins={[remarkMath, remarkGfm]}
+                  rehypePlugins={[rehypeKatex]}
                 components={{
-                  code({ className, children, ...props }) {
+                  code({ className, children, ref, node, ...rest }) {
                     const match = /language-(\w+)/.exec(className || '');
                     const codeStr = String(children).replace(/\n$/, '');
                     
@@ -143,13 +151,13 @@ export const MessageBubble = memo(function MessageBubble({ msg, isDark, onEdit }
                           language={match[1]}
                           PreTag="div"
                           customStyle={{ margin: 0, padding: '1rem', background: '#111113', fontSize: '13px' }}
-                          {...props}
+                          {...rest}
                         >
                           {codeStr}
                         </SyntaxHighlighter>
                       </div>
                     ) : (
-                      <code className={`px-1.5 py-0.5 rounded-md font-mono text-[13px] ${isDark ? 'bg-white/10 text-emerald-300' : 'bg-black/5 text-emerald-600'}`} {...props}>
+                      <code className={`px-1.5 py-0.5 rounded-md font-mono text-[13px] ${isDark ? 'bg-white/10 text-emerald-300' : 'bg-black/5 text-emerald-600'}`} {...rest}>
                         {children}
                       </code>
                     );
@@ -158,6 +166,7 @@ export const MessageBubble = memo(function MessageBubble({ msg, isDark, onEdit }
               >
                 {content}
               </MemoizedMarkdown>
+              )}
             </div>
 
             {/* AI Message Actions */}

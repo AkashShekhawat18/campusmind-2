@@ -41,7 +41,7 @@ class QuestionGeneratorAgent:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Original Question:\n{original_text}"}
                 ],
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 temperature=0.8,
                 max_tokens=1024
             )

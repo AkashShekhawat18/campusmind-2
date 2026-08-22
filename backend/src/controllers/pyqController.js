@@ -5,17 +5,23 @@ const FormData = require('form-data');
 const cloudinary = require('../utils/cloudinary');
 const streamifier = require('streamifier');
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001';
 
 const uploadToCloudinary = (buffer, originalname) => {
   return new Promise((resolve, reject) => {
+    // 60 second timeout to prevent infinite hanging
+    const timeout = setTimeout(() => {
+      reject(new Error('Cloudinary upload timed out'));
+    }, 60000);
+
     const ext = originalname ? require('path').extname(originalname) : '.pdf';
     const public_id = `file_${Date.now()}${ext}`;
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: 'campusmind/resources', resource_type: 'raw', public_id },
+      { folder: 'malphor/resources', resource_type: 'auto', public_id },
       (error, result) => {
+        clearTimeout(timeout);
         if (result) resolve(result);
-        else reject(error);
+        else reject(error || new Error('Unknown Cloudinary Error'));
       }
     );
     streamifier.createReadStream(buffer).pipe(uploadStream);
@@ -134,20 +140,44 @@ exports.getPYQLibrary = async (req, res) => {
   }
 };
 
+exports.previewPYQ = async (req, res) => {
+  try {
+    const paper = await prisma.pYQPaper.findUnique({ where: { id: req.params.id } });
+    if (!paper) return res.status(404).send('Paper not found');
+
+    const response = await axios({
+      method: 'get',
+      url: paper.fileUrl,
+      responseType: 'stream'
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="' + (paper.originalFileName || 'paper.pdf') + '"');
+    
+    response.data.pipe(res);
+  } catch (error) {
+    console.error('Preview proxy error:', error);
+    res.status(500).send('Failed to load preview');
+  }
+};
+
 exports.analyzeCurrentPaper = async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
     
     // Upload file to Cloudinary for history reference
+    const uploadStart = Date.now();
     const uploadResult = await uploadToCloudinary(file.buffer, file.originalname);
     const publicUrl = uploadResult.secure_url;
     
     const form = new FormData();
     form.append('file', file.buffer, file.originalname);
     
+    const extractStart = Date.now();
     const extractResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/extract`, form, {
-      headers: { ...form.getHeaders() }
+      headers: { ...form.getHeaders() },
+      timeout: 120000 // 2 minutes
     });
     
     const currentQuestions = extractResponse.data.questions || [];
@@ -179,6 +209,8 @@ exports.analyzeCurrentPaper = async (req, res) => {
     const simResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/similarity`, {
       questions: currentQuestions,
       historical_pool: formattedPool
+    }, {
+      timeout: 120000 // 2 minutes
     });
     
     const overallRepetition = simResponse.data.summary?.averageSimilarity || 
@@ -205,6 +237,226 @@ exports.analyzeCurrentPaper = async (req, res) => {
     res.status(500).json({ error: 'Failed to analyze paper' });
   }
 };
+
+/**
+ * SSE-based analyze endpoint.
+ * Sends real-time progress events to the frontend as each pipeline stage completes.
+ * Uses Server-Sent Events (text/event-stream).
+ */
+exports.analyzeCurrentPaperSSE = async (req, res) => {
+  // Setup SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.flushHeaders();
+
+  const sendEvent = (stage, data) => {
+    const payload = JSON.stringify({ stage, ...(data || {}) });
+    res.write(`data: ${payload}\n\n`);
+  };
+
+  const sendError = (message) => {
+    const payload = JSON.stringify({ stage: 'ERROR', error: message });
+    res.write(`data: ${payload}\n\n`);
+    res.end();
+  };
+
+  try {
+    const file = req.file;
+    if (!file) {
+      sendError('No file uploaded');
+      return;
+    }
+
+    // --- Stage 1: Upload to Cloudinary ---
+    sendEvent('UPLOAD_STARTED');
+    let publicUrl;
+    try {
+      const uploadResult = await uploadToCloudinary(file.buffer, file.originalname);
+      publicUrl = uploadResult.secure_url;
+    } catch (uploadErr) {
+      console.error('Cloudinary Upload Error:', uploadErr);
+      sendError('File upload to cloud storage failed.');
+      return;
+    }
+    sendEvent('UPLOAD_FINISHED');
+
+    // --- Stages 2-6: Stream extraction from Python AI Service ---
+    // The Python service emits NDJSON events for VISION, OCR, LATEX, QUESTION_EXTRACTION, EMBEDDING
+    const form = new FormData();
+    form.append('file', file.buffer, file.originalname);
+
+    let currentQuestions = [];
+    let extractionError = null;
+
+    try {
+      const extractResponse = await axios.post(
+        `${AI_SERVICE_URL}/api/ai/pyq/extract?stream=true`,
+        form,
+        {
+          headers: { ...form.getHeaders() },
+          responseType: 'stream',
+          timeout: 300000 // 5 minutes for streaming
+        }
+      );
+
+      // Process NDJSON stream from Python
+      await new Promise((resolve, reject) => {
+        let buffer = '';
+
+        extractResponse.data.on('data', (chunk) => {
+          buffer += chunk.toString();
+          const lines = buffer.split('\n');
+          // Keep the last potentially incomplete line in the buffer
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (parsed.event === 'progress') {
+                sendEvent(parsed.stage);
+              } else if (parsed.event === 'result') {
+                currentQuestions = parsed.questions || [];
+              } else if (parsed.event === 'error') {
+                extractionError = parsed.message;
+              }
+            } catch (parseErr) {
+              // Skip malformed lines
+              console.warn('Skipping malformed NDJSON line:', trimmed);
+            }
+          }
+        });
+
+        extractResponse.data.on('end', () => {
+          // Process any remaining data in buffer
+          if (buffer.trim()) {
+            try {
+              const parsed = JSON.parse(buffer.trim());
+              if (parsed.event === 'result') {
+                currentQuestions = parsed.questions || [];
+              } else if (parsed.event === 'error') {
+                extractionError = parsed.message;
+              }
+            } catch (e) { /* ignore */ }
+          }
+          resolve();
+        });
+
+        extractResponse.data.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+    } catch (streamErr) {
+      console.error('AI Service Stream Error:', streamErr);
+      sendError('AI extraction service failed.');
+      return;
+    }
+
+    if (extractionError) {
+      sendError(extractionError);
+      return;
+    }
+
+    if (!currentQuestions || currentQuestions.length === 0) {
+      sendError('No questions could be extracted from the document.');
+      return;
+    }
+
+    // --- Stage 7: Similarity Matching ---
+    sendEvent('SIMILARITY_STARTED');
+
+    const historicalQuestions = await prisma.pYQQuestion.findMany({
+      include: {
+        metadata: true,
+        paper: {
+          select: { title: true, subjectName: true, year: true }
+        }
+      }
+    });
+
+    const formattedPool = historicalQuestions.map(q => ({
+      id: q.id,
+      questionText: q.questionText || '',
+      marks: q.marks,
+      metadata: q.metadata ? {
+        concept: q.metadata.concept || '',
+        subconcept: q.metadata.subconcept || '',
+        questionIntent: q.metadata.questionIntent || '',
+        requiredFormula: q.metadata.requiredFormula || '',
+        solvingMethod: q.metadata.solvingMethod || '',
+        difficulty: q.metadata.difficulty || '',
+        logic: q.metadata.logic || ''
+      } : {}
+    }));
+
+    let simData;
+    try {
+      const simResponse = await axios.post(`${AI_SERVICE_URL}/api/ai/pyq/similarity`, {
+        questions: currentQuestions,
+        historical_pool: formattedPool
+      }, {
+        timeout: 120000
+      });
+      simData = simResponse.data;
+    } catch (simErr) {
+      const detail = simErr.response?.data?.detail || simErr.message || 'Unknown error';
+      console.error('Similarity Error:', detail);
+      sendError(`Similarity analysis failed: ${detail}`);
+      return;
+    }
+    sendEvent('SIMILARITY_COMPLETED');
+
+    // --- Stage 8: Report Generation ---
+    sendEvent('REPORT_STARTED');
+    const overallRepetition = simData.summary?.averageSimilarity ||
+      (simData.similarityResults.reduce((acc, curr) => acc + curr.overallSimilarity, 0) / (simData.similarityResults.length || 1));
+    sendEvent('REPORT_COMPLETED');
+
+    // --- Stage 9: Database Save ---
+    sendEvent('DB_SAVE_STARTED');
+    let historyRecord;
+    try {
+      historyRecord = await prisma.pYQAnalysisHistory.create({
+        data: {
+          userId: req.user.id,
+          title: file.originalname,
+          fileUrl: publicUrl,
+          overallRepetition: overallRepetition,
+          status: 'COMPLETED',
+          extractedQuestions: currentQuestions,
+          similarityResult: simData
+        }
+      });
+    } catch (dbErr) {
+      console.error('DB Save Error:', dbErr);
+      sendError('Failed to save analysis to database.');
+      return;
+    }
+    sendEvent('DB_SAVE_FINISHED');
+
+    // --- Stage 10: Completed - send final result ---
+    const finalResult = {
+      ...simData,
+      analysisId: historyRecord.id
+    };
+    sendEvent('COMPLETED', { result: finalResult });
+
+    res.end();
+
+  } catch (error) {
+    console.error('Analyze Paper SSE Error:', error);
+    try {
+      sendError('An unexpected error occurred during analysis.');
+    } catch (writeErr) {
+      // Response already ended
+    }
+  }
+};
+
 
 exports.replaceQuestion = async (req, res) => {
   try {

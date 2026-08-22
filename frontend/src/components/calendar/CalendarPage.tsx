@@ -187,7 +187,7 @@ export default function CalendarPage({ role }: CalendarPageProps) {
 
   return (
     <div className="flex flex-col min-h-screen p-6 md:p-8 space-y-8">
-      {/* Header section matching CampusMind UI */}
+      {/* Header section matching MALPHOR UI */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-white">
           {role === "teacher" ? "Teaching Calendar" : "Study Calendar"}

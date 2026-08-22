@@ -21,7 +21,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setMounted(true);
     setTeacherName(localStorage.getItem('teacherName') || 'Demo Teacher');
-    setTeacherEmail(localStorage.getItem('teacherEmail') || 'teacher@campusmind.ai');
+    setTeacherEmail(localStorage.getItem('teacherEmail') || 'teacher@malphor.ai');
   }, []);
 
   const handlePasswordChange = (e: React.FormEvent) => {

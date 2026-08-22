@@ -30,17 +30,17 @@ async function main() {
     // Groq Models
     {
       providerId: providerMap['groq'],
-      modelName: 'llama-3.3-70b-versatile',
+      modelName: 'openai/gpt-oss-20b',
       displayName: 'Llama 3.3 70B (Versatile)',
       description: 'Extremely fast logic and general chatting.',
       supportsChat: true, supportsVision: false, supportsReasoning: true, priority: 10,
     },
     {
       providerId: providerMap['groq'],
-      modelName: 'llama-3.1-8b-instant',
-      displayName: 'Llama 3.1 8B (Fast)',
-      description: 'Ultra fast small model.',
-      supportsChat: true, supportsVision: false, priority: 5,
+      modelName: 'openai/gpt-oss-20b',
+      displayName: 'GPT-OSS 20B (Fast)',
+      description: 'Ultra fast small model with reasoning.',
+      supportsChat: true, supportsVision: false, supportsReasoning: true, priority: 5,
     },
     // Google Models
     {

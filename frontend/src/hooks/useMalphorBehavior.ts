@@ -22,7 +22,7 @@ export function useMalphorBehavior(
   const [bubbleText, setBubbleText] = useState<string | null>(null);
   const [bubbleVisible, setBubbleVisible] = useState(false);
   const [isHologramActive, setIsHologramActive] = useState(false);
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0, distance: Infinity });
+  const cursorPosRef = useRef({ x: 0, y: 0, distance: Infinity });
 
   // Cooldowns and counters
   const [ctaCooldown, setCtaCooldown] = useState(false);
@@ -102,7 +102,7 @@ export function useMalphorBehavior(
       const nx = (e.clientX / window.innerWidth) * 2 - 1;
       const ny = -(e.clientY / window.innerHeight) * 2 + 1;
 
-      setCursorPos({ x: nx, y: ny, distance });
+      cursorPosRef.current = { x: nx, y: ny, distance };
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -164,7 +164,7 @@ export function useMalphorBehavior(
     bubbleText,
     bubbleVisible,
     isHologramActive,
-    cursorPos,
+    cursorPosRef,
     showBubble,
     setAnimationState: setBaseState,
     setBubbleVisible,

@@ -160,7 +160,7 @@ export function PromptInput({
           
           <div className="text-[9px] opacity-40 font-bold tracking-widest uppercase flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Powered by CampusMind AI Router
+              Powered by MALPHOR AI Router
             </div>
           </div>
 
